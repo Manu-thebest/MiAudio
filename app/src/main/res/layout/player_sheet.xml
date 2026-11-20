@@ -49,25 +49,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="6dp"
-                    android:text="Aleatorio"
-                    android:textColor="@color/texto2"
-                    android:textSize="12sp" />
-
-                <ImageButton
-                    android:id="@+id/sheetAleatorio"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginRight="14dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Orden aleatorio"
-                    android:src="@drawable/ic_aleatorio"
-                    android:tint="@color/texto2" />
-
-                <TextView
-                    style="@style/Texto.Sub"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginRight="6dp"
                     android:text="Parar"
                     android:textColor="@color/texto2"
                     android:textSize="12sp" />
@@ -228,5 +209,43 @@
             android:gravity="center"
             android:textColor="@color/texto3"
             android:textSize="11sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:id="@+id/sheetAleatorioFila"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="18dp"
+            android:paddingTop="8dp"
+            android:paddingRight="18dp"
+            android:paddingBottom="20dp">
+
+            <ImageButton
+                android:id="@+id/sheetAleatorio"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Orden aleatorio"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_aleatorio"
+                android:tint="@color/texto2" />
+
+            <TextView
+                style="@style/Texto.Sub"
+                android:id="@+id/sheetAleatorioTexto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="4dp"
+                android:text="Aleatorio"
+                android:textColor="@color/texto2"
+                android:textSize="13sp" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

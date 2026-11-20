@@ -276,6 +276,7 @@ class MainActivity : AppCompatActivity() {
             c.seekTo(if (dur > 0) destino.coerceAtMost(dur) else destino)
         }
         findViewById<View>(R.id.sheetAleatorio).setOnClickListener { alternarAleatorio() }
+        findViewById<View>(R.id.sheetAleatorioFila).setOnClickListener { alternarAleatorio() }
         findViewById<View>(R.id.miniParar).setOnClickListener { parar() }
         findViewById<View>(R.id.sheetParar).setOnClickListener { parar() }
         sheetBarra.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -1104,11 +1105,10 @@ class MainActivity : AppCompatActivity() {
     /** Pinta el boton de aleatorio en verde si esta activo. */
     private fun pintarBotonAleatorio() {
         val activo = controlador?.shuffleModeEnabled == true
-        findViewById<View>(R.id.sheetAleatorio)?.backgroundTintList = null
+        val color = ContextCompat.getColor(this, if (activo) R.color.verde else R.color.texto2)
         (findViewById<View>(R.id.sheetAleatorio) as? android.widget.ImageButton)?.imageTintList =
-            android.content.res.ColorStateList.valueOf(
-                ContextCompat.getColor(this, if (activo) R.color.verde else R.color.texto2)
-            )
+            android.content.res.ColorStateList.valueOf(color)
+        (findViewById<View>(R.id.sheetAleatorioTexto) as? TextView)?.setTextColor(color)
     }
 
     /** Boton Aleatorio: mezcla la cola sin cortar lo que esta sonando. */
@@ -1153,6 +1153,8 @@ class MainActivity : AppCompatActivity() {
             sheetTitulo.text = md.title ?: ""
             sheetSub.text = md.artist ?: ""
             pintarArte(sheetArt, md.artworkUri?.toString())
+            (findViewById<View>(R.id.sheetAleatorioTexto) as? TextView)?.text =
+                if (c.shuffleModeEnabled) "Aleatorio activado" else "Aleatorio"
             val azar = if (c.shuffleModeEnabled) " · aleatorio" else ""
             sheetCola.text = "En cola: ${c.mediaItemCount} · ${c.currentMediaItemIndex + 1} de ${c.mediaItemCount}$azar"
             sheetTotal.text = reloj(c.duration.coerceAtLeast(0))

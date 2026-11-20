@@ -55,7 +55,7 @@ Detalles a tener en cuenta:
 
 ### Botón Aleatorio en el reproductor
 
-Arriba a la derecha de la pantalla completa hay un **botón Aleatorio** (además de la fila «Reproducir en orden aleatorio» de cada lista y carpeta):
+Abajo del todo de la pantalla completa hay un **botón Aleatorio**, al alcance del pulgar (además de la fila «Reproducir en orden aleatorio» de cada lista y carpeta):
 
 - Al activarlo se pone **verde** y lo que va sonando después sale al azar, sin cortar la canción actual. La línea de la cola lo indica («· aleatorio»).
 - Al volver a tocarlo, la cola recupera su orden.
