@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- paleta estilo Spotify -->
-    <color name="fondo">#121212</color>
-    <color name="superficie">#181818</color>
-    <color name="panel">#282828</color>
-    <color name="panel_alto">#333333</color>
-    <color name="divisor">#2A2A2A</color>
-    <color name="verde">#1ED760</color>
-    <color name="verde_oscuro">#1DB954</color>
-    <color name="texto">#FFFFFF</color>
-    <color name="texto2">#B3B3B3</color>
-    <color name="texto3">#6A6A6A</color>
+    <!-- paleta clara (modo dia) -->
+    <color name="fondo">#FFFFFF</color>
+    <color name="superficie">#F4F4F4</color>
+    <color name="panel">#EAEAEA</color>
+    <color name="panel_alto">#DEDEDE</color>
+    <color name="divisor">#D0D0D0</color>
+    <color name="verde">#12A64A</color>
+    <color name="verde_oscuro">#0E8C3D</color>
+    <color name="texto">#121212</color>
+    <color name="texto2">#5F5F5F</color>
+    <color name="texto3">#8A8A8A</color>
     <color name="negro">#000000</color>
 
     <!-- iconos -->
     <color name="fondo_icono">#121212</color>
-    <color name="acento">#1ED760</color>
+    <color name="acento">#12A64A</color>
 </resources>

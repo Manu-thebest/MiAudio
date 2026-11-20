@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.MiAudio" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.MiAudio" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/verde</item>
         <item name="colorOnPrimary">@color/negro</item>
         <item name="colorSecondary">@color/verde</item>
@@ -9,7 +9,9 @@
         <item name="android:colorBackground">@color/fondo</item>
         <item name="android:windowBackground">@color/fondo</item>
         <item name="android:statusBarColor">@color/negro</item>
-        <item name="android:navigationBarColor">@color/fondo</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/negro</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:textColorPrimary">@color/texto</item>
         <item name="android:textColorSecondary">@color/texto2</item>
         <item name="android:textColorHint">@color/texto3</item>

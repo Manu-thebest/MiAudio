@@ -29,6 +29,10 @@ No hace falta cuenta ni permiso especial de Google: se usa el selector de ficher
 - **Copia automática en la nube**: se elige una carpeta de Drive una sola vez. Desde entonces la copia se reescribe sola al salir de la app (`miaudio-copia.json`), sin volver a tocar nada.
 - **Desactivarla**: en Ajustes, sección «Copia de seguridad», hay dos entradas: **«Copia en la nube»** (estado, guardar ahora, cambiar de carpeta) y **«Quitar la copia en la nube»** (solo desactivar, o desactivar y borrar el fichero de la nube). Al desactivar se suelta también el permiso de esa carpeta. Abajo del todo de Ajustes se ve la versión instalada.
 
+## Tema claro u oscuro
+
+En Ajustes, sección «Apariencia» → **Tema**: **Oscuro** (el de siempre), **Claro** o **Según el móvil** (sigue el modo dia/noche del sistema). El cambio se ve al momento sin cerrar la app, y se recuerda al volver a abrirla.
+
 ## Listas
 
 - **Reproducir en orden aleatorio**: mezcla la lista (también la carpeta de audios) y esa cola mezclada es la que ve el coche.

@@ -2,6 +2,7 @@ package cat.manu.miaudio
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
@@ -22,6 +23,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -193,6 +195,13 @@ class MainActivity : AppCompatActivity() {
     // ------------------------------------------------------------------ ciclo
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppCompatDelegate.setDefaultNightMode(
+            when (temaElegido()) {
+                "claro" -> AppCompatDelegate.MODE_NIGHT_NO
+                "oscuro" -> AppCompatDelegate.MODE_NIGHT_YES
+                else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            }
+        )
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -789,6 +798,8 @@ class MainActivity : AppCompatActivity() {
                 else "Ahora mismo no hay ninguna copia activada"
             ) { dialogoQuitarCopia() }
         )
+        out.add(Row.cabecera("Apariencia"))
+        out.add(Row.accion("Tema", nombreTema()) { dialogoTema() })
         out.add(Row.cabecera("Reproducción"))
         out.add(
             Row.accion(
@@ -1540,6 +1551,46 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
                 pintar()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    /** Tema elegido: "oscuro", "claro" o "auto" (el del movil). */
+    private fun temaElegido(): String =
+        getSharedPreferences("estado", Context.MODE_PRIVATE).getString("tema", "oscuro") ?: "oscuro"
+
+    private fun nombreTema(): String = when (temaElegido()) {
+        "claro" -> "Claro"
+        "auto" -> "Segun el movil"
+        else -> "Oscuro"
+    }
+
+    private fun dialogoTema() {
+        val opciones = arrayOf("Oscuro", "Claro", "Segun el movil")
+        val actual = when (temaElegido()) {
+            "claro" -> 1
+            "auto" -> 2
+            else -> 0
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Tema")
+            .setSingleChoiceItems(opciones, actual) { d, cual ->
+                val modo = when (cual) {
+                    1 -> "claro"
+                    2 -> "auto"
+                    else -> "oscuro"
+                }
+                getSharedPreferences("estado", Context.MODE_PRIVATE)
+                    .edit().putString("tema", modo).apply()
+                AppCompatDelegate.setDefaultNightMode(
+                    when (modo) {
+                        "claro" -> AppCompatDelegate.MODE_NIGHT_NO
+                        "oscuro" -> AppCompatDelegate.MODE_NIGHT_YES
+                        else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                    }
+                )
+                d.dismiss()
             }
             .setNegativeButton("Cancelar", null)
             .show()
