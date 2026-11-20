@@ -143,6 +143,50 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Elegir la carpeta de la nube para la copia automatica. */
+    private val elegirCarpetaCopia = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            CopiaNube.guardarCarpeta(this, uri)
+            val ok = CopiaNube.guardar(this)
+            Toast.makeText(
+                this,
+                if (ok) "Copia automatica activada en ${CopiaNube.nombreCarpeta(this)}"
+                else "Carpeta guardada, pero no se pudo escribir la copia",
+                Toast.LENGTH_LONG
+            ).show()
+            pintar()
+        }
+    }
+
+    /** Importar una lista .m3u / .m3u8. */
+    private val abrirM3u = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            Lib.refrescarLocal(this)
+            val res = M3u.leer(this, uri)
+            if (res == null) {
+                Toast.makeText(this, "No se pudo leer ese fichero", Toast.LENGTH_LONG).show()
+            } else if (res.pistas.isEmpty()) {
+                Toast.makeText(
+                    this,
+                    "No he encontrado en el movil ninguna cancion de esa lista",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                val nombre = M3u.guardar(res)
+                val extra = if (res.noEncontradas.isEmpty()) "" else " · ${res.noEncontradas.size} sin encontrar"
+                Toast.makeText(
+                    this, "Lista \"$nombre\": ${res.pistas.size} canciones$extra", Toast.LENGTH_LONG
+                ).show()
+                pila.clear()
+                mostrar(Nivel.Lista(nombre))
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ ciclo
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -250,6 +294,14 @@ class MainActivity : AppCompatActivity() {
         if (nav.selectedItemId != R.id.tabInicio) nav.selectedItemId = R.id.tabInicio
         if (pila.isEmpty()) mostrar(Nivel.Inicio)
         arrancarReloj()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (CopiaNube.activa(this)) {
+            val app = applicationContext
+            Thread { runCatching { CopiaNube.autoGuardar(app) } }.start()
+        }
     }
 
     override fun onDestroy() {
@@ -595,6 +647,9 @@ class MainActivity : AppCompatActivity() {
             out.add(Row.accion("Reproducir la carpeta", "${lista.size} audios") {
                 reproducirCola(lista, 0)
             })
+            out.add(Row.accion("Reproducir en orden aleatorio", "${lista.size} audios al azar") {
+                reproducirAleatorio(lista, null)
+            })
             out.add(Row.accion("Añadir la carpeta entera a una lista", "${lista.size} audios") {
                 elegirLista { destino ->
                     for (t in lista) Lib.store.anadir(destino, t)
@@ -653,13 +708,40 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         }
+        if (l.pistas.size > 1) {
+            out.add(
+                Row.accion("Reproducir en orden aleatorio", "${l.pistas.size} pistas al azar") {
+                    reproducirAleatorio(l.pistas, nombre)
+                }
+            )
+        }
+        out.add(
+            Row.accion("Reordenar o quitar canciones", "Mantén pulsada una canción de la lista") {
+                dialogoOrdenar(nombre)
+            }
+        )
         var grupoActual: String? = null
+        var ocultas = 0
         l.pistas.forEach { t ->
+            val hecho = Estado.esEscuchado(t.mediaId())
+            if (Estado.ocultarEscuchados && hecho) {
+                ocultas++
+                return@forEach
+            }
             if (t.grupo != null && t.grupo != grupoActual) {
                 grupoActual = t.grupo
                 out.add(Row.cabecera("Álbum · ${t.grupo}"))
             }
-            out.add(Row.pista(t, sub(t), t.grupo, Estado.esEscuchado(t.mediaId())))
+            out.add(Row.pista(t, sub(t), t.grupo, hecho))
+        }
+        if (ocultas > 0) {
+            out.add(
+                Row.accion("Ver también las $ocultas ya escuchadas", "Ahora están ocultas") {
+                    Estado.ocultarEscuchados = false
+                    Toast.makeText(this, "Ya se ven todas", Toast.LENGTH_SHORT).show()
+                    pintar()
+                }
+            )
         }
         fijar(out)
     }
@@ -674,6 +756,15 @@ class MainActivity : AppCompatActivity() {
                 if (Estado.seguirConRecomendados) "Activado" else "Desactivado"
             ) {
                 Estado.seguirConRecomendados = !Estado.seguirConRecomendados
+                pintar()
+            }
+        )
+        out.add(
+            Row.accion(
+                "En las listas, no enseñar lo ya escuchado",
+                if (Estado.ocultarEscuchados) "Activado" else "Desactivado"
+            ) {
+                Estado.ocultarEscuchados = !Estado.ocultarEscuchados
                 pintar()
             }
         )
@@ -728,7 +819,33 @@ class MainActivity : AppCompatActivity() {
                 "Solo enlaces, posiciones y estructura"
             ) { abrirCopia.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
         )
+        out.add(
+            Row.accion(
+                "Copia automática en la nube",
+                if (CopiaNube.activa(this)) "Activada · ${CopiaNube.nombreCarpeta(this)}"
+                else "Desactivada · elige una carpeta de Drive"
+            ) { dialogoCopiaNube() }
+        )
         out.add(Row.cabecera("Datos"))
+        out.add(
+            Row.accion(
+                "Importar lista .m3u / .m3u8",
+                "Una playlist del ordenador o de otro reproductor"
+            ) {
+                abrirM3u.launch(
+                    arrayOf(
+                        "audio/x-mpegurl", "audio/mpegurl", "application/vnd.apple.mpegurl",
+                        "application/octet-stream", "text/plain", "*/*"
+                    )
+                )
+            }
+        )
+        out.add(
+            Row.accion(
+                "Quitar canciones que ya no están",
+                "${Lib.contarRotasRapido()} canciones no encontradas"
+            ) { dialogoRotas() }
+        )
         out.add(
             Row.accion("Reindexar audio del móvil", "${Lib.localTracks.size} audios encontrados") {
                 Lib.refrescarLocal(this)
@@ -878,6 +995,14 @@ class MainActivity : AppCompatActivity() {
         val pistas = filas.mapNotNull { it.track }
         if (pistas.isEmpty()) return
         reproducirCola(pistas, indice, origen)
+    }
+
+    /** Orden aleatorio: la cola tambien va mezclada (tambien se ve asi en el coche). */
+    private fun reproducirAleatorio(pistas: List<Track>, origen: String?) {
+        if (pistas.isEmpty()) return
+        val mezcla = ArrayList(pistas)
+        mezcla.shuffle()
+        reproducirCola(mezcla, 0, origen)
     }
 
     private fun reproducirFila(fila: Row) {
@@ -1053,10 +1178,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun menuPista(t: Track) {
         val enLista = pila.lastOrNull() as? Nivel.Lista
+        val escuchado = Estado.esEscuchado(t.mediaId())
         val opciones = ArrayList<String>()
         opciones.add(getString(R.string.anadir_a_lista))
         opciones.add("Reproducir ahora")
-        if (enLista != null) opciones.add("Quitar de \"${enLista.nombre}\"")
+        opciones.add(if (escuchado) "Marcar como no escuchado" else "Marcar como escuchado")
+        if (enLista != null) {
+            opciones.add("Subir en la lista")
+            opciones.add("Bajar en la lista")
+            opciones.add("Mover al final de la lista")
+            opciones.add("Quitar de \"${enLista.nombre}\"")
+        }
         AlertDialog.Builder(this)
             .setTitle(t.title)
             .setItems(opciones.toTypedArray()) { _, i ->
@@ -1067,17 +1199,114 @@ class MainActivity : AppCompatActivity() {
                         pintar()
                     }
                     1 -> arrancar(listOf(t.toMediaItem()), 0)
+                    2 -> {
+                        if (escuchado) Estado.desmarcarEscuchado(t.mediaId())
+                        else Estado.marcarEscuchado(t.mediaId())
+                        pintar()
+                    }
                     else -> {
                         val l = enLista ?: return@setItems
-                        val lista = Lib.store.buscar(l.nombre) ?: return@setItems
-                        val idx = lista.pistas.indexOfFirst { it.kind == t.kind && it.id == t.id }
-                        if (idx >= 0) {
-                            Lib.store.quitar(l.nombre, idx)
-                            pintar()
+                        val idx = Lib.store.posicion(l.nombre, t)
+                        if (idx < 0) return@setItems
+                        when (i) {
+                            3 -> Lib.store.mover(l.nombre, idx, idx - 1)
+                            4 -> Lib.store.mover(l.nombre, idx, idx + 1)
+                            5 -> Lib.store.moverAlFinal(l.nombre, idx)
+                            else -> Lib.store.quitar(l.nombre, idx)
                         }
+                        pintar()
                     }
                 }
             }
+            .show()
+    }
+
+    /** Elegir una cancion de la lista para moverla de sitio. */
+    private fun dialogoOrdenar(nombre: String) {
+        val l = Lib.store.buscar(nombre) ?: return
+        if (l.pistas.isEmpty()) return
+        val titulos = l.pistas.mapIndexed { i, t -> "${i + 1}. ${t.title}" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Reordenar \"$nombre\"")
+            .setItems(titulos) { _, i -> menuMover(nombre, i, i) }
+            .setNegativeButton("Cerrar", null)
+            .show()
+    }
+
+    /** Menu para mover una pista. despues de mover se puede seguir moviendo. */
+    private fun menuMover(nombre: String, indice: Int, original: Int) {
+        val l = Lib.store.buscar(nombre) ?: return
+        if (indice !in l.pistas.indices) return
+        val opciones = arrayOf("Subir", "Bajar", "Mover al final")
+        AlertDialog.Builder(this)
+            .setTitle(l.pistas[indice].title)
+            .setItems(opciones) { _, i ->
+                when (i) {
+                    0 -> Lib.store.mover(nombre, indice, indice - 1)
+                    1 -> Lib.store.mover(nombre, indice, indice + 1)
+                    else -> Lib.store.moverAlFinal(nombre, indice)
+                }
+                pintar()
+                val nuevo = when (i) {
+                    0 -> (indice - 1).coerceAtLeast(0)
+                    1 -> (indice + 1).coerceAtMost(l.pistas.size - 1)
+                    else -> l.pistas.size - 1
+                }
+                menuMover(nombre, nuevo, original)
+            }
+            .setNegativeButton("Ya está", null)
+            .show()
+    }
+
+    /** Activar, cambiar o quitar la copia automatica en la nube. */
+    private fun dialogoCopiaNube() {
+        if (!CopiaNube.activa(this)) {
+            elegirCarpetaCopia.launch(null)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Copia automática")
+            .setMessage("Carpeta: ${CopiaNube.nombreCarpeta(this)}\nSe guarda sola cada vez que sales de la app.")
+            .setItems(arrayOf("Guardar ahora", "Cambiar de carpeta", "Desactivar")) { _, i ->
+                when (i) {
+                    0 -> {
+                        val ok = CopiaNube.guardar(this)
+                        Toast.makeText(
+                            this, if (ok) "Copia guardada" else "No se pudo guardar la copia",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    1 -> elegirCarpetaCopia.launch(null)
+                    else -> {
+                        CopiaNube.quitarCarpeta(this)
+                        Toast.makeText(this, "Copia automática desactivada", Toast.LENGTH_SHORT).show()
+                        pintar()
+                    }
+                }
+            }
+            .show()
+    }
+
+    /** Quitar de las listas las canciones que ya no se encuentran. */
+    private fun dialogoRotas() {
+        val n = Lib.contarRotas(this)
+        if (n == 0) {
+            Toast.makeText(this, "No falta ninguna canción", Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Canciones que ya no están")
+            .setMessage(
+                "Hay $n canciones en tus listas que ahora mismo no encuentro.\n\n" +
+                    "Suelen ser ficheros borrados o una memoria (SD/USB) desconectada. " +
+                    "Si tienes una memoria fuera, conéctala antes y vuelve a mirar."
+            )
+            .setPositiveButton("Quitarlas") { _, _ ->
+                val quitadas = Lib.limpiarRotas(this)
+                Toast.makeText(this, "Quitadas $quitadas canciones", Toast.LENGTH_LONG).show()
+                pintar()
+            }
+            .setNegativeButton("Cancelar", null)
             .show()
     }
 

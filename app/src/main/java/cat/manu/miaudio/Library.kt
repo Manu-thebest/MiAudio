@@ -108,6 +108,34 @@ class PlaylistStore(private val file: File) {
         }
     }
 
+    /** Posicion de una pista dentro de la lista (-1 si no esta). */
+    @Synchronized
+    fun posicion(nombre: String, t: Track): Int {
+        val l = buscar(nombre) ?: return -1
+        return l.pistas.indexOfFirst { it.kind == t.kind && it.id == t.id }
+    }
+
+    /** Mueve una pista de sitio dentro de la lista (reordenar). */
+    @Synchronized
+    fun mover(nombre: String, desde: Int, hasta: Int) {
+        val l = buscar(nombre) ?: return
+        if (desde !in l.pistas.indices) return
+        val destino = hasta.coerceIn(0, l.pistas.size - 1)
+        if (destino == desde) return
+        val t = l.pistas.removeAt(desde)
+        l.pistas.add(destino, t)
+        save()
+    }
+
+    @Synchronized
+    fun moverAlFinal(nombre: String, indice: Int) {
+        val l = buscar(nombre) ?: return
+        if (indice !in l.pistas.indices) return
+        val t = l.pistas.removeAt(indice)
+        l.pistas.add(t)
+        save()
+    }
+
     @Synchronized
     fun borrarLista(nombre: String) {
         listas.removeAll { it.nombre == nombre }
@@ -148,6 +176,45 @@ object Lib {
             .toMap()
         permisoAudio = tienePermiso(ctx)
         return t
+    }
+
+    /** Canciones de las listas que ya no estan en el movil (borradas o memoria quitada). */
+    private fun indicesRotos(): List<Pair<String, Int>> {
+        if (localTracks.isEmpty()) return emptyList()   // sin permiso o sin audio: no se toca nada
+        val vivos = localTracks.map { it.id }.toHashSet()
+        val out = ArrayList<Pair<String, Int>>()
+        for (l in store.listas) {
+            l.pistas.forEachIndexed { i, t ->
+                if (t.kind == "local" && t.uriPropia.isNotBlank() && t.id.isNotBlank() &&
+                    !vivos.contains(t.id)
+                ) out.add(l.nombre to i)
+            }
+        }
+        return out
+    }
+
+    /** Cuenta sin volver a escanear (usa la ultima revision del movil). */
+    fun contarRotasRapido(): Int = indicesRotos().size
+
+    fun contarRotas(ctx: Context): Int {
+        if (!tienePermiso(ctx)) return 0
+        refrescarLocal(ctx)
+        return indicesRotos().size
+    }
+
+    /** Quita de las listas las canciones que ya no se encuentran. Devuelve cuantas. */
+    fun limpiarRotas(ctx: Context): Int {
+        if (!tienePermiso(ctx)) return 0
+        refrescarLocal(ctx)
+        val rotas = indicesRotos()
+        if (rotas.isEmpty()) return 0
+        for ((nombre, indices) in rotas.groupBy({ it.first }, { it.second })) {
+            val l = store.buscar(nombre) ?: continue
+            for (i in indices.sortedDescending()) if (i in l.pistas.indices) l.pistas.removeAt(i)
+            l.indice = l.indice.coerceIn(0, (l.pistas.size - 1).coerceAtLeast(0))
+        }
+        store.save()
+        return rotas.size
     }
 
     /** Audios de una carpeta (para el coche y para la pantalla de carpetas). */
@@ -320,6 +387,17 @@ object Estado {
             p().edit().putStringSet("escuchados", HashSet(m)).apply()
         }
     }
+
+    fun desmarcarEscuchado(mediaId: String) {
+        if (mediaId.isBlank()) return
+        val m = escuchados()
+        if (m.remove(mediaId)) p().edit().putStringSet("escuchados", HashSet(m)).apply()
+    }
+
+    /** En las listas, enseñar solo lo que queda por oir. */
+    var ocultarEscuchados: Boolean
+        get() = p().getBoolean("ocultarEscuchados", false)
+        set(v) = p().edit().putBoolean("ocultarEscuchados", v).apply()
 
     fun olvidarEscuchados() {
         escuchados().clear()

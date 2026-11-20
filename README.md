@@ -26,6 +26,17 @@ En **Ajustes → Copia en Google Drive**:
 
 No hace falta cuenta ni permiso especial de Google: se usa el selector de ficheros del móvil, donde Drive ya aparece.
 
+- **Copia automática en la nube**: se elige una carpeta de Drive una sola vez. Desde entonces la copia se reescribe sola al salir de la app (`miaudio-copia.json`), sin volver a tocar nada. Se puede guardar a mano, cambiar de carpeta o desactivar.
+
+## Listas
+
+- **Reproducir en orden aleatorio**: mezcla la lista (también la carpeta de audios) y esa cola mezclada es la que ve el coche.
+- **Reordenar o quitar**: mantener pulsada una canción y elegir subir, bajar, mover al final o quitar. También desde «Reordenar o quitar canciones» de la propia lista, donde se puede mover una canción varias veces seguidas.
+- **Marcar como escuchado / no escuchado** a mano, sin esperar al 85 %.
+- **No enseñar lo ya escuchado**: oculta de las listas lo que ya está oído, con un acceso al final para volver a verlo.
+- **Importar `.m3u` / `.m3u8`**: se lee la playlist, se empareja cada línea con el audio del móvil (por nombre de fichero o título, sin extensión) y se crea la lista. Las líneas que son enlaces `http` se añaden como streaming; lo que no se encuentra se cuenta y se avisa.
+- **Quitar canciones que ya no están**: repasa las listas y borra las pistas locales que han desaparecido (fichero borrado o memoria desconectada). Los enlaces de YouTube no se tocan.
+
 ## Mandos del coche
 
 - **Anterior / siguiente** y **retroceder 5 s / avanzar 5 s** en la pantalla de Android Auto y en el reproductor de la app.
