@@ -837,7 +837,8 @@ class MainActivity : AppCompatActivity() {
         out.add(
             Row.accion(
                 "Copia automática en la nube",
-                if (CopiaNube.activa(this)) "Activada · ${CopiaNube.nombreCarpeta(this)}"
+                if (CopiaNube.activa(this))
+                    "Activada en ${CopiaNube.nombreCarpeta(this)} · toca para cambiar o desactivar"
                 else "Desactivada · elige una carpeta de Drive"
             ) { dialogoCopiaNube() }
         )
@@ -1406,7 +1407,14 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Copia automática")
             .setMessage("Carpeta: ${CopiaNube.nombreCarpeta(this)}\nSe guarda sola cada vez que sales de la app.")
-            .setItems(arrayOf("Guardar ahora", "Cambiar de carpeta", "Desactivar")) { _, i ->
+            .setItems(
+                arrayOf(
+                    "Guardar ahora",
+                    "Cambiar de carpeta",
+                    "Desactivar la copia",
+                    "Desactivar y borrar la copia de la nube"
+                )
+            ) { _, i ->
                 when (i) {
                     0 -> {
                         val ok = CopiaNube.guardar(this)
@@ -1416,9 +1424,23 @@ class MainActivity : AppCompatActivity() {
                         ).show()
                     }
                     1 -> elegirCarpetaCopia.launch(null)
-                    else -> {
+                    2 -> {
                         CopiaNube.quitarCarpeta(this)
-                        Toast.makeText(this, "Copia automática desactivada", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this, "Copia automática desactivada. El fichero que ya está en la nube no se toca.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        pintar()
+                    }
+                    else -> {
+                        val borrado = CopiaNube.borrar(this)
+                        CopiaNube.quitarCarpeta(this)
+                        Toast.makeText(
+                            this,
+                            if (borrado) "Copia desactivada y fichero borrado de la nube"
+                            else "Copia desactivada (no había fichero que borrar)",
+                            Toast.LENGTH_LONG
+                        ).show()
                         pintar()
                     }
                 }

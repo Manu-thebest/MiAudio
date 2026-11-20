@@ -13,8 +13,8 @@ android {
         applicationId = "cat.manu.miaudio"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "2.6"
+        versionCode = 9
+        versionName = "2.7"
     }
 
     // La firma se toma de local.properties (no versionado) para no publicar

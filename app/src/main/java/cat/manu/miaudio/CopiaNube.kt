@@ -51,6 +51,31 @@ object CopiaNube {
         prefs(ctx).edit().remove(CLAVE).apply()
     }
 
+    /** Borra el fichero de copia de la carpeta (no la carpeta). */
+    fun borrar(ctx: Context): Boolean {
+        val arbol = carpeta(ctx) ?: return false
+        return runCatching {
+            val r = ctx.contentResolver
+            val idRaiz = DocumentsContract.getTreeDocumentId(arbol)
+            val hijos = DocumentsContract.buildChildDocumentsUriUsingTree(arbol, idRaiz)
+            var doc: String? = null
+            r.query(
+                hijos,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                null, null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    if (c.getString(1) == NOMBRE) {
+                        doc = c.getString(0)
+                        break
+                    }
+                }
+            }
+            val d = doc ?: return false
+            DocumentsContract.deleteDocument(r, DocumentsContract.buildDocumentUriUsingTree(arbol, d))
+        }.getOrDefault(false)
+    }
+
     /** Escribe (o reescribe) la copia dentro de la carpeta elegida. */
     fun guardar(ctx: Context): Boolean {
         val arbol = carpeta(ctx) ?: return false
