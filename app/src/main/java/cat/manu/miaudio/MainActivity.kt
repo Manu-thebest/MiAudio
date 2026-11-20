@@ -781,6 +781,14 @@ class MainActivity : AppCompatActivity() {
                 else "Desactivada · toca para elegir una carpeta de Drive"
             ) { dialogoCopiaNube() }
         )
+        out.add(
+            Row.accion(
+                "Quitar la copia en la nube",
+                if (CopiaNube.activa(this))
+                    "Desactivarla y, si quieres, borrar el fichero de la nube"
+                else "Ahora mismo no hay ninguna copia activada"
+            ) { dialogoQuitarCopia() }
+        )
         out.add(Row.cabecera("Reproducción"))
         out.add(
             Row.accion(
@@ -891,7 +899,7 @@ class MainActivity : AppCompatActivity() {
             pintar()
         })
         out.add(Row.cabecera("Acerca de"))
-        out.add(Row.accion("Mi Audio 2.0", "YouTube solo audio · listas · Android Auto") { })
+        out.add(Row.accion("Mi Audio ${versionInstalada()}", "YouTube solo audio · listas · Android Auto") { })
         fijar(out)
     }
 
@@ -1445,7 +1453,12 @@ class MainActivity : AppCompatActivity() {
     /** Activar, cambiar o quitar la copia automatica en la nube. */
     private fun dialogoCopiaNube() {
         if (!CopiaNube.activa(this)) {
-            elegirCarpetaCopia.launch(null)
+            AlertDialog.Builder(this)
+                .setTitle("Copia en la nube")
+                .setMessage("Ahora mismo está desactivada: no se guarda nada en la nube.\n\nSe elige una carpeta de Drive una sola vez y la copia se reescribe sola al salir de la app.")
+                .setPositiveButton("Elegir carpeta") { _, _ -> elegirCarpetaCopia.launch(null) }
+                .setNegativeButton("Cerrar", null)
+                .show()
             return
         }
         AlertDialog.Builder(this)
@@ -1491,6 +1504,51 @@ class MainActivity : AppCompatActivity() {
             }
             .show()
     }
+
+    /** Quitar la copia en la nube: solo desactivar o desactivar y borrar el fichero. */
+    private fun dialogoQuitarCopia() {
+        if (!CopiaNube.activa(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Quitar la copia en la nube")
+                .setMessage("No hay ninguna copia activada: no se está guardando nada en la nube.")
+                .setPositiveButton("Elegir una carpeta") { _, _ -> elegirCarpetaCopia.launch(null) }
+                .setNegativeButton("Cerrar", null)
+                .show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Quitar la copia en la nube")
+            .setMessage(
+                "Carpeta: ${CopiaNube.nombreCarpeta(this)}\n\n" +
+                    "¿Qué hago con el fichero miaudio-copia.json que ya está guardado?"
+            )
+            .setPositiveButton("Desactivar y borrarlo") { _, _ ->
+                val ok = CopiaNube.borrar(this)
+                CopiaNube.quitarCarpeta(this)
+                Toast.makeText(
+                    this,
+                    if (ok) "Copia desactivada y fichero borrado de la nube"
+                    else "Copia desactivada (no encontré el fichero para borrarlo)",
+                    Toast.LENGTH_LONG
+                ).show()
+                pintar()
+            }
+            .setNeutralButton("Solo desactivar") { _, _ ->
+                CopiaNube.quitarCarpeta(this)
+                Toast.makeText(
+                    this, "Copia automática desactivada. El fichero de la nube se queda.",
+                    Toast.LENGTH_LONG
+                ).show()
+                pintar()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    /** Version instalada, para poder comprobarla en Ajustes. */
+    private fun versionInstalada(): String = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+    }.getOrDefault("")
 
     /** Quitar de las listas las canciones que ya no se encuentran. */
     private fun dialogoRotas() {

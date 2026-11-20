@@ -27,7 +27,7 @@ En **Ajustes → Copia en Google Drive**:
 No hace falta cuenta ni permiso especial de Google: se usa el selector de ficheros del móvil, donde Drive ya aparece.
 
 - **Copia automática en la nube**: se elige una carpeta de Drive una sola vez. Desde entonces la copia se reescribe sola al salir de la app (`miaudio-copia.json`), sin volver a tocar nada.
-- **Desactivarla**: en esa misma entrada de Ajustes se puede **guardar ahora**, **cambiar de carpeta**, **desactivar la copia** (deja de hacerse, el fichero que ya está en la nube se queda) o **desactivar y borrar la copia de la nube** (quita el fichero de la carpeta). Al desactivar se suelta también el permiso de esa carpeta.
+- **Desactivarla**: en Ajustes, sección «Copia de seguridad», hay dos entradas: **«Copia en la nube»** (estado, guardar ahora, cambiar de carpeta) y **«Quitar la copia en la nube»** (solo desactivar, o desactivar y borrar el fichero de la nube). Al desactivar se suelta también el permiso de esa carpeta. Abajo del todo de Ajustes se ve la versión instalada.
 
 ## Listas
 
