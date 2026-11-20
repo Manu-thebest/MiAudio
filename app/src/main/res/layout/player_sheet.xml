@@ -49,6 +49,25 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="6dp"
+                    android:text="Aleatorio"
+                    android:textColor="@color/texto2"
+                    android:textSize="12sp" />
+
+                <ImageButton
+                    android:id="@+id/sheetAleatorio"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginRight="14dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Orden aleatorio"
+                    android:src="@drawable/ic_aleatorio"
+                    android:tint="@color/texto2" />
+
+                <TextView
+                    style="@style/Texto.Sub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="6dp"
                     android:text="Parar"
                     android:textColor="@color/texto2"
                     android:textSize="12sp" />
@@ -150,7 +169,7 @@
                 android:layout_width="46dp"
                 android:layout_height="46dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Retroceder 15 segundos"
+                android:contentDescription="Retroceder 5 segundos"
                 android:src="@drawable/ic_fr"
                 android:tint="@color/texto" />
 
@@ -195,7 +214,7 @@
                 android:layout_width="46dp"
                 android:layout_height="46dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Avanzar 30 segundos"
+                android:contentDescription="Avanzar 5 segundos"
                 android:src="@drawable/ic_ff"
                 android:tint="@color/texto" />
         </LinearLayout>

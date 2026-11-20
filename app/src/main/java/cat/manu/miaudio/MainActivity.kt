@@ -59,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sheetTiempo: TextView
     private lateinit var sheetTotal: TextView
     private lateinit var sheetPlay: ImageButton
+    /** Cuanto saltan los botones de retroceder/avanzar de la app. */
+    private val SALTO_MS = 5_000L
     private lateinit var sheetCola: TextView
 
     private lateinit var adaptador: Adaptador
@@ -264,11 +266,16 @@ class MainActivity : AppCompatActivity() {
             if (c.currentPosition > 4000) c.seekTo(0) else if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem()
         }
         findViewById<View>(R.id.sheetRetrocede).setOnClickListener {
-            controlador?.let { if (it.isCommandAvailable(Player.COMMAND_SEEK_BACK)) it.seekBack() }
+            val c = controlador ?: return@setOnClickListener
+            c.seekTo((c.currentPosition - SALTO_MS).coerceAtLeast(0L))
         }
         findViewById<View>(R.id.sheetAvanza).setOnClickListener {
-            controlador?.let { if (it.isCommandAvailable(Player.COMMAND_SEEK_FORWARD)) it.seekForward() }
+            val c = controlador ?: return@setOnClickListener
+            val destino = c.currentPosition + SALTO_MS
+            val dur = c.duration
+            c.seekTo(if (dur > 0) destino.coerceAtMost(dur) else destino)
         }
+        findViewById<View>(R.id.sheetAleatorio).setOnClickListener { alternarAleatorio() }
         findViewById<View>(R.id.miniParar).setOnClickListener { parar() }
         findViewById<View>(R.id.sheetParar).setOnClickListener { parar() }
         sheetBarra.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -764,6 +771,15 @@ class MainActivity : AppCompatActivity() {
     private fun nivelAjustes() {
         cabecera.text = getString(R.string.tab_ajustes)
         val out = ArrayList<Row>()
+        out.add(Row.cabecera("Copia de seguridad"))
+        out.add(
+            Row.accion(
+                "Copia en la nube",
+                if (CopiaNube.activa(this))
+                    "Activada en ${CopiaNube.nombreCarpeta(this)} · toca para guardar, cambiar o desactivar"
+                else "Desactivada · toca para elegir una carpeta de Drive"
+            ) { dialogoCopiaNube() }
+        )
         out.add(Row.cabecera("Reproducción"))
         out.add(
             Row.accion(
@@ -833,14 +849,6 @@ class MainActivity : AppCompatActivity() {
                 "Importar desde Google Drive",
                 "Solo enlaces, posiciones y estructura"
             ) { abrirCopia.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
-        )
-        out.add(
-            Row.accion(
-                "Copia automática en la nube",
-                if (CopiaNube.activa(this))
-                    "Activada en ${CopiaNube.nombreCarpeta(this)} · toca para cambiar o desactivar"
-                else "Desactivada · elige una carpeta de Drive"
-            ) { dialogoCopiaNube() }
         )
         out.add(Row.cabecera("Datos"))
         out.add(
@@ -1093,6 +1101,38 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Música parada", Toast.LENGTH_SHORT).show()
     }
 
+    /** Pinta el boton de aleatorio en verde si esta activo. */
+    private fun pintarBotonAleatorio() {
+        val activo = controlador?.shuffleModeEnabled == true
+        findViewById<View>(R.id.sheetAleatorio)?.backgroundTintList = null
+        (findViewById<View>(R.id.sheetAleatorio) as? android.widget.ImageButton)?.imageTintList =
+            android.content.res.ColorStateList.valueOf(
+                ContextCompat.getColor(this, if (activo) R.color.verde else R.color.texto2)
+            )
+    }
+
+    /** Boton Aleatorio: mezcla la cola sin cortar lo que esta sonando. */
+    private fun alternarAleatorio() {
+        val c = controlador ?: return
+        if (!c.isCommandAvailable(Player.COMMAND_SET_SHUFFLE_MODE)) {
+            Toast.makeText(this, "Este reproductor no deja cambiar el orden", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (c.mediaItemCount < 2) {
+            Toast.makeText(this, "Solo hay una canción en la cola", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val activar = !c.shuffleModeEnabled
+        c.setShuffleModeEnabled(activar)
+        pintarBotonAleatorio()
+        Toast.makeText(
+            this,
+            if (activar) "Aleatorio activado: lo que viene va al azar"
+            else "Aleatorio desactivado: la cola vuelve a su orden",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     private fun pintarMini() {
         val c = controlador
         val item = c?.currentMediaItem
@@ -1113,8 +1153,10 @@ class MainActivity : AppCompatActivity() {
             sheetTitulo.text = md.title ?: ""
             sheetSub.text = md.artist ?: ""
             pintarArte(sheetArt, md.artworkUri?.toString())
-            sheetCola.text = "En cola: ${c.mediaItemCount} · ${c.currentMediaItemIndex + 1} de ${c.mediaItemCount}"
+            val azar = if (c.shuffleModeEnabled) " · aleatorio" else ""
+            sheetCola.text = "En cola: ${c.mediaItemCount} · ${c.currentMediaItemIndex + 1} de ${c.mediaItemCount}$azar"
             sheetTotal.text = reloj(c.duration.coerceAtLeast(0))
+            pintarBotonAleatorio()
         }
     }
 

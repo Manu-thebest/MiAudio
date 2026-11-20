@@ -53,6 +53,13 @@ Detalles a tener en cuenta:
 - Tarda unos segundos por canción (una búsqueda de YouTube por tema) y se puede cancelar.
 - Funciona con enlaces de lista y de álbum públicos. Las listas privadas (o «Tus me gusta») necesitan cuenta, así que no entran.
 
+### Botón Aleatorio en el reproductor
+
+Arriba a la derecha de la pantalla completa hay un **botón Aleatorio** (además de la fila «Reproducir en orden aleatorio» de cada lista y carpeta):
+
+- Al activarlo se pone **verde** y lo que va sonando después sale al azar, sin cortar la canción actual. La línea de la cola lo indica («· aleatorio»).
+- Al volver a tocarlo, la cola recupera su orden.
+
 ## Mandos del coche
 
 - **Anterior / siguiente** y **retroceder 5 s / avanzar 5 s** en la pantalla de Android Auto y en el reproductor de la app.
