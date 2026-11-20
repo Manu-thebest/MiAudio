@@ -104,6 +104,45 @@ class MainActivity : AppCompatActivity() {
         pintar()
     }
 
+    /** Guardar la copia: el selector deja elegir Google Drive como destino. */
+    private val guardarCopia = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            val texto = Copia.exportar(this)
+            if (Copia.escribir(this, uri, texto)) {
+                Toast.makeText(this, "Copia guardada", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "No se pudo guardar la copia", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** Leer la copia: el selector deja elegir un fichero de Drive. */
+    private val abrirCopia = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val texto = Copia.leer(this, uri)
+            if (texto == null) {
+                Toast.makeText(this, "No se pudo leer el fichero", Toast.LENGTH_LONG).show()
+            } else {
+                val r = Copia.importar(this, texto)
+                if (r == null) {
+                    Toast.makeText(this, "Ese fichero no es una copia de MiAudio", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Copia importada: ${r.listasNuevas} listas nuevas, ${r.listasYaEstaban} ya estaban, " +
+                            "${r.posiciones} posiciones y ${r.escuchados} marcas",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    pintar()
+                }
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ ciclo
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -675,6 +714,19 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Marcas borradas", Toast.LENGTH_SHORT).show()
                 pintar()
             }
+        )
+        out.add(Row.cabecera("Copia en Google Drive"))
+        out.add(
+            Row.accion(
+                "Exportar listas, posiciones y enlaces",
+                "Se elige la carpeta: Drive, teléfono…"
+            ) { guardarCopia.launch(Copia.nombreFichero()) }
+        )
+        out.add(
+            Row.accion(
+                "Importar desde Google Drive",
+                "Solo enlaces, posiciones y estructura"
+            ) { abrirCopia.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
         )
         out.add(Row.cabecera("Datos"))
         out.add(

@@ -109,9 +109,9 @@ class PlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(true)
             // Sin estos dos incrementos Android Auto no pinta los botones de
-            // retroceder/avanzar en la pantalla del coche. Atras 15 s, adelante 30 s.
-            .setSeekBackIncrementMs(15_000)
-            .setSeekForwardIncrementMs(30_000)
+            // retroceder/avanzar en la pantalla del coche. Atras y adelante 5 s.
+            .setSeekBackIncrementMs(5_000)
+            .setSeekForwardIncrementMs(5_000)
             .build()
 
         reproductor.addListener(object : Player.Listener {

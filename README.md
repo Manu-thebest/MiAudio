@@ -17,9 +17,18 @@ Reproductor Android con estética oscura tipo Spotify para escuchar **el audio d
 - **Marca de escuchados**: check verde y título atenuado en lo ya oído (85 % de la duración o final), también visible en el coche.
 - **Posición por lista**: cada lista guarda el capítulo por el que va y cada episodio recuerda su minuto. Al abrir una lista se puede **seguir donde lo dejé** o empezar desde el principio.
 
+## Copia en Google Drive
+
+En **Ajustes → Copia en Google Drive**:
+
+- **Exportar listas, posiciones y enlaces**: crea un fichero `miaudio-AAAA-MM-DD.json` con las listas, su orden, el índice de cada lista, la posición de cada audio, las marcas de escuchado y la última cola. No incluye audio ni descargas. En el selector se elige **Drive** como carpeta y queda en la nube.
+- **Importar desde Google Drive**: elige ese fichero desde Drive y restaura lo que falte. No pisa lo que ya hay: las listas con el mismo nombre se dejan como están y las posiciones solo se rellenan si aquí estaban a cero.
+
+No hace falta cuenta ni permiso especial de Google: se usa el selector de ficheros del móvil, donde Drive ya aparece.
+
 ## Mandos del coche
 
-- **Anterior / siguiente** y **retroceder 15 s / avanzar 30 s** en la pantalla de Android Auto y en el reproductor de la app.
+- **Anterior / siguiente** y **retroceder 5 s / avanzar 5 s** en la pantalla de Android Auto y en el reproductor de la app.
 
 ## Compilar
 
