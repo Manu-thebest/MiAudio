@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MiAudio" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/verde</item>
+        <item name="colorOnPrimary">@color/negro</item>
+        <item name="colorSecondary">@color/verde</item>
+        <item name="colorSurface">@color/fondo</item>
+        <item name="colorOnSurface">@color/texto</item>
+        <item name="android:colorBackground">@color/fondo</item>
+        <item name="android:windowBackground">@color/fondo</item>
+        <item name="android:statusBarColor">@color/negro</item>
+        <item name="android:navigationBarColor">@color/fondo</item>
+        <item name="android:textColorPrimary">@color/texto</item>
+        <item name="android:textColorSecondary">@color/texto2</item>
+        <item name="android:textColorHint">@color/texto3</item>
+    </style>
+
+    <style name="Texto.Titulo" parent="">
+        <item name="android:textColor">@color/texto</item>
+        <item name="android:textSize">26sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.03</item>
+    </style>
+
+    <style name="Texto.Seccion" parent="">
+        <item name="android:textColor">@color/texto</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.02</item>
+    </style>
+
+    <style name="Texto.Fila" parent="">
+        <item name="android:textColor">@color/texto</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <style name="Texto.Sub" parent="">
+        <item name="android:textColor">@color/texto2</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+</resources>

@@ -1,0 +1,21 @@
+# Gradle / Android
+.gradle/
+.kotlin/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.cxx/
+
+# Firma (nunca al repo)
+keystore/
+*.jks
+*.keystore
+
+# Salidas
+*.apk
+*.aab
+*.ap_
+*.dex
+*.log

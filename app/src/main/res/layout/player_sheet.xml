@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sheet"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fondo"
+    android:clickable="true"
+    android:focusable="true"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingLeft="24dp"
+        android:paddingTop="14dp"
+        android:paddingRight="24dp"
+        android:paddingBottom="24dp">
+
+        <ImageButton
+            android:id="@+id/sheetAbajo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="left"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/ic_abajo"
+            android:tint="@color/texto" />
+
+        <TextView
+            android:id="@+id/sheetEtiqueta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="18dp"
+            android:letterSpacing="0.1"
+            android:text="REPRODUCIENDO"
+            android:textColor="@color/texto2"
+            android:textSize="11sp" />
+
+        <ImageView
+            android:id="@+id/sheetArt"
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:background="@drawable/bg_panel"
+            android:contentDescription="@string/app_name"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_musica" />
+
+        <TextView
+            android:id="@+id/sheetTitulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/texto"
+            android:textSize="21sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/sheetSub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/texto2"
+            android:textSize="14sp" />
+
+        <SeekBar
+            android:id="@+id/sheetBarra"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:progressBackgroundTint="@color/panel_alto"
+            android:progressTint="@color/texto"
+            android:thumbTint="@color/texto" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/sheetTiempo"
+                style="@style/Texto.Sub"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/texto2"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/sheetTotal"
+                style="@style/Texto.Sub"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="right"
+                android:textColor="@color/texto2"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/sheetAnterior"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_anterior"
+                android:tint="@color/texto" />
+
+            <FrameLayout
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:layout_marginLeft="26dp"
+                android:layout_marginRight="26dp"
+                android:background="@drawable/bg_circulo_verde">
+
+                <ImageButton
+                    android:id="@+id/sheetPlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@null"
+                    android:contentDescription="@string/reproducir_todo"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_play"
+                    android:tint="@color/negro" />
+            </FrameLayout>
+
+            <ImageButton
+                android:id="@+id/sheetSiguiente"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_siguiente"
+                android:tint="@color/texto" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/sheetCola"
+            style="@style/Texto.Sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:textColor="@color/texto3"
+            android:textSize="11sp" />
+    </LinearLayout>
+</FrameLayout>

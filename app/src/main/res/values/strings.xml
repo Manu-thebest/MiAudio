@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mi Audio</string>
+    <string name="locales">Locales</string>
+    <string name="listas">Listas</string>
+    <string name="youtube">YouTube</string>
+    <string name="buscar">Buscar</string>
+    <string name="nueva_lista">Nueva lista</string>
+    <string name="anadir_a_lista">Añadir a lista</string>
+    <string name="hint_buscar">¿Qué quieres escuchar?</string>
+    <string name="sin_permiso">Sin permiso para leer el audio del móvil</string>
+
+    <string name="tab_inicio">Inicio</string>
+    <string name="tab_buscar">Buscar</string>
+    <string name="tab_biblioteca">Biblioteca</string>
+    <string name="tab_ajustes">Ajustes</string>
+
+    <string name="seguir_escuchando">Seguir escuchando</string>
+    <string name="recomendados">Recomendados para ti</string>
+    <string name="busquedas_recientes">Búsquedas recientes</string>
+    <string name="tus_listas">Tus listas</string>
+    <string name="audio_movil">Audio del móvil</string>
+    <string name="reproducir_todo">Reproducir todo</string>
+    <string name="guardar_lista_entera">Guardar la lista entera en una mía</string>
+    <string name="cargando">Cargando…</string>
+    <string name="sin_resultados">Sin resultados</string>
+</resources>
