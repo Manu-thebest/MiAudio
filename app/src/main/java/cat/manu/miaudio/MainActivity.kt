@@ -2,6 +2,7 @@ package cat.manu.miaudio
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.os.Build
@@ -294,6 +295,20 @@ class MainActivity : AppCompatActivity() {
         if (nav.selectedItemId != R.id.tabInicio) nav.selectedItemId = R.id.tabInicio
         if (pila.isEmpty()) mostrar(Nivel.Inicio)
         arrancarReloj()
+        compartidoSiLoHay(intent)
+    }
+
+    /** Si se comparte un enlace de Spotify a Mi Audio, se importa al momento. */
+    private fun compartidoSiLoHay(i: Intent?) {
+        if (i?.action != Intent.ACTION_SEND) return
+        val texto = i.getStringExtra(Intent.EXTRA_TEXT) ?: return
+        if (Spotify.idDe(texto) != null) importarSpotify(texto)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        compartidoSiLoHay(intent)
     }
 
     override fun onStop() {
@@ -842,6 +857,12 @@ class MainActivity : AppCompatActivity() {
         )
         out.add(
             Row.accion(
+                "Importar una lista de Spotify",
+                "Se busca cada canción en YouTube"
+            ) { dialogoSpotify() }
+        )
+        out.add(
+            Row.accion(
                 "Quitar canciones que ya no están",
                 "${Lib.contarRotasRapido()} canciones no encontradas"
             ) { dialogoRotas() }
@@ -1256,6 +1277,124 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Ya está", null)
             .show()
+    }
+
+    // ------------------------------------------------------------- Spotify
+
+    private var importando = false
+    private var cancelarImportacion = false
+    private var dialogoImportando: AlertDialog? = null
+
+    /** Pedir el enlace de la lista de Spotify. */
+    private fun dialogoSpotify() {
+        val caja = EditText(this)
+        caja.hint = "Pega aquí el enlace"
+        caja.setSingleLine(false)
+        val marco = android.widget.FrameLayout(this)
+        val margen = (16 * resources.displayMetrics.density).toInt()
+        val lp = android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        lp.setMargins(margen, margen / 2, margen, 0)
+        marco.addView(caja, lp)
+        AlertDialog.Builder(this)
+            .setTitle("Importar de Spotify")
+            .setMessage(
+                "En Spotify: lista → Compartir → Copiar enlace, y pégalo aquí.\n\n" +
+                    "Buscaré cada canción en YouTube y montaré la lista. También puedes " +
+                    "compartir la lista con Mi Audio directamente desde Spotify."
+            )
+            .setView(marco)
+            .setPositiveButton("Importar") { _, _ ->
+                val t = caja.text.toString().trim()
+                if (t.isEmpty()) {
+                    Toast.makeText(this, "Pega antes el enlace", Toast.LENGTH_SHORT).show()
+                } else {
+                    importarSpotify(t)
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    /** Lee la lista de Spotify y busca cada canción en YouTube. */
+    private fun importarSpotify(texto: String) {
+        if (Spotify.idDe(texto) == null) {
+            Toast.makeText(this, "Ese enlace no es de una lista de Spotify", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (importando) {
+            Toast.makeText(this, "Ya hay una importación en marcha", Toast.LENGTH_SHORT).show()
+            return
+        }
+        importando = true
+        cancelarImportacion = false
+        dialogoImportando = AlertDialog.Builder(this)
+            .setTitle("Importando de Spotify")
+            .setMessage("Leyendo la lista…")
+            .setNegativeButton("Cancelar") { _, _ -> cancelarImportacion = true }
+            .setCancelable(false)
+            .show()
+
+        enSegundoPlano {
+            var error: String? = null
+            var nombre: String? = null
+            var hechas = 0
+            var fallos = 0
+
+            val lista = Spotify.leer(texto)
+            if (lista == null || lista.pistas.isEmpty()) {
+                error = "No he podido leer esa lista de Spotify"
+            } else {
+                val tracks = ArrayList<Track>()
+                for ((i, p) in lista.pistas.withIndex()) {
+                    if (cancelarImportacion) break
+                    val numero = i + 1
+                    runOnUiThread {
+                        dialogoImportando?.setMessage(
+                            "Buscando en YouTube $numero de ${lista.pistas.size}…\n\n" +
+                                "${p.titulo}\n${p.artistas}"
+                        )
+                    }
+                    val consulta = "${p.titulo} ${p.artistas.substringBefore(',')}".trim()
+                    val candidatos = runCatching {
+                        Yt.hasta(consulta, Yt.VIDEOS, 6).tracks
+                    }.getOrDefault(emptyList())
+                    val elegido = Spotify.elegir(p, candidatos)
+                    if (elegido != null) {
+                        tracks.add(elegido)
+                        hechas++
+                    } else {
+                        fallos++
+                    }
+                    Thread.sleep(250)
+                }
+                if (cancelarImportacion) {
+                    error = "Importación cancelada"
+                } else if (tracks.isEmpty()) {
+                    error = "No he encontrado esas canciones en YouTube"
+                } else {
+                    nombre = Lib.guardarLista(lista.nombre, tracks)
+                }
+            }
+
+            runOnUiThread {
+                importando = false
+                dialogoImportando?.dismiss()
+                dialogoImportando = null
+                val n = nombre
+                if (n != null) {
+                    val extra = if (fallos > 0) " · $fallos sin encontrar" else ""
+                    Toast.makeText(this, "Lista \"$n\": $hechas canciones$extra", Toast.LENGTH_LONG).show()
+                    pila.clear()
+                    mostrar(Nivel.Lista(n))
+                } else {
+                    Toast.makeText(this, error ?: "No se pudo importar", Toast.LENGTH_LONG).show()
+                    pintar()
+                }
+            }
+        }
     }
 
     /** Activar, cambiar o quitar la copia automatica en la nube. */

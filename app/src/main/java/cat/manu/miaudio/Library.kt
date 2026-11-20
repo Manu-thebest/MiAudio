@@ -69,6 +69,18 @@ class PlaylistStore(private val file: File) {
     @Synchronized
     fun buscar(nombre: String): Lista? = listas.firstOrNull { it.nombre == nombre }
 
+    /** Crea una lista nueva con ese nombre (le añade " (2)", " (3)"… si ya existe). */
+    fun nombreLibre(nombre: String): String {
+        var n = nombre.trim().ifBlank { "Lista" }
+        var i = 2
+        val base = n
+        while (buscar(n) != null && i < 99) {
+            n = "$base ($i)"
+            i++
+        }
+        return n
+    }
+
     @Synchronized
     fun anadir(nombre: String, t: Track, grupo: String? = null): Int {
         val l = buscar(nombre) ?: crear(nombre)
@@ -145,6 +157,16 @@ class PlaylistStore(private val file: File) {
 
 /** Estado compartido del proceso: listas + audio local escaneado. */
 object Lib {
+    /** Guarda una lista entera de una vez (importaciones). */
+    fun guardarLista(nombre: String, tracks: List<Track>): String {
+        val n = store.nombreLibre(nombre)
+        val l = store.crear(n)
+        l.pistas.addAll(tracks)
+        l.indice = 0
+        store.save()
+        return n
+    }
+
     lateinit var store: PlaylistStore
 
     @Volatile

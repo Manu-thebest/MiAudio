@@ -37,6 +37,21 @@ No hace falta cuenta ni permiso especial de Google: se usa el selector de ficher
 - **Importar `.m3u` / `.m3u8`**: se lee la playlist, se empareja cada línea con el audio del móvil (por nombre de fichero o título, sin extensión) y se crea la lista. Las líneas que son enlaces `http` se añaden como streaming; lo que no se encuentra se cuenta y se avisa.
 - **Quitar canciones que ya no están**: repasa las listas y borra las pistas locales que han desaparecido (fichero borrado o memoria desconectada). Los enlaces de YouTube no se tocan.
 
+## Importar de Spotify
+
+**Ajustes → Importar una lista de Spotify** (o compartiendo la lista desde Spotify con Mi Audio, como se comparte con WhatsApp):
+
+1. Se pega el enlace de la lista (`open.spotify.com/playlist/...`).
+2. La app lee el nombre y las canciones de esa lista **sin cuenta ni permisos de Spotify**: pide la página pública de la lista.
+3. Busca cada canción en YouTube (título + artista) y elige el resultado que más se parece: duración parecida, título contenido y descartando karaokes, covers, directos largos, versiones aceleradas y audios de 1 hora.
+4. Crea la lista con las canciones encontradas y avisa de cuántas no ha podido encontrar.
+
+Detalles a tener en cuenta:
+
+- Se leen las **primeras 50 canciones** de la lista: es lo que Spotify publica en esa página sin iniciar sesión.
+- Tarda unos segundos por canción (una búsqueda de YouTube por tema) y se puede cancelar.
+- Funciona con enlaces de lista y de álbum públicos. Las listas privadas (o «Tus me gusta») necesitan cuenta, así que no entran.
+
 ## Mandos del coche
 
 - **Anterior / siguiente** y **retroceder 5 s / avanzar 5 s** en la pantalla de Android Auto y en el reproductor de la app.
