@@ -15,6 +15,8 @@ object Ids {
     const val YTPL = "ytpl:"    // ytpl:<url de lista codificada>
     const val YTVID = "ytvid:"  // ytvid:<videoId>
     const val LOCAL = "local:"  // local:<id de MediaStore>
+    const val CARPETAS = "carpetas"        // lista de carpetas del movil
+    const val CARPETA = "carpetalocal:"    // carpetalocal:<nombre codificado>
 }
 
 /** Una pista reproducible: audio del movil o video de YouTube (solo audio). */
@@ -27,13 +29,19 @@ data class Track(
     /** Portada: URL https o content:// ; vacia = sin portada. */
     val art: String = "",
     /** Nombre del album/lista de YouTube del que vino (para agrupar). */
-    val grupo: String? = null
+    val grupo: String? = null,
+    /** URI real del fichero: content:// del volumen donde este (interna, SD o USB). */
+    val uriPropia: String = "",
+    /** Carpeta de origen, con el nombre del almacenamiento delante. */
+    val carpeta: String = ""
 ) {
     fun mediaId(): String = if (kind == "local") Ids.LOCAL + id else Ids.YTVID + id
 
-    fun uri(): Uri =
-        if (kind == "local") Uri.parse("content://media/external/audio/media/$id")
-        else Uri.parse("yt:$id")
+    fun uri(): Uri = when {
+        uriPropia.isNotBlank() -> Uri.parse(uriPropia)
+        kind == "local" -> Uri.parse("content://media/external/audio/media/$id")
+        else -> Uri.parse("yt:$id")
+    }
 
     fun artUri(): Uri? = when {
         art.startsWith("http") || art.startsWith("content://") -> Uri.parse(art)
@@ -47,8 +55,9 @@ data class Track(
             .setIsBrowsable(false)
             .setIsPlayable(true)
         if (durMs > 0) meta.setDurationMs(durMs)
-        val portada = artUri() ?: Uri.parse("https://i.ytimg.com/vi/$id/mqdefault.jpg")
-        meta.setArtworkUri(portada)
+        val portada = artUri()
+            ?: if (kind == "yt") Uri.parse("https://i.ytimg.com/vi/$id/mqdefault.jpg") else null
+        if (portada != null) meta.setArtworkUri(portada)
         val b = MediaItem.Builder()
             .setMediaId(mediaId())
             .setUri(uri())
@@ -72,11 +81,20 @@ data class Track(
         put("durMs", durMs)
         put("art", art)
         put("grupo", grupo ?: "")
+        put("uri", uriPropia)
+        put("carpeta", carpeta)
     }
 
     companion object {
-        fun local(id: Long, title: String, artist: String, durMs: Long, art: String = "") =
-            Track("local", id.toString(), title, artist, durMs, art)
+        fun local(
+            id: String,
+            title: String,
+            artist: String,
+            durMs: Long,
+            art: String = "",
+            uriPropia: String = "",
+            carpeta: String = ""
+        ) = Track("local", id, title, artist, durMs, art, null, uriPropia, carpeta)
 
         fun yt(videoId: String, title: String, author: String, durMs: Long, grupo: String? = null) =
             Track("yt", videoId, title, author, durMs, "https://i.ytimg.com/vi/$videoId/mqdefault.jpg", grupo)
@@ -88,7 +106,9 @@ data class Track(
             subtitle = o.optString("subtitle"),
             durMs = o.optLong("durMs", 0L),
             art = o.optString("art", ""),
-            grupo = o.optString("grupo", "").ifBlank { null }
+            grupo = o.optString("grupo", "").ifBlank { null },
+            uriPropia = o.optString("uri", ""),
+            carpeta = o.optString("carpeta", "")
         )
     }
 }

@@ -70,6 +70,11 @@ class MainActivity : AppCompatActivity() {
     private var origenActual: String? = null
     private var ajustandoBarra = false
 
+    // seleccion multiple de audios locales para meterlos en una lista
+    private var modoSeleccion = false
+    private val seleccion = LinkedHashSet<String>()
+    private var filaGuardar = -1
+
     // navegacion
     private sealed class Nivel {
         object Inicio : Nivel()
@@ -77,6 +82,8 @@ class MainActivity : AppCompatActivity() {
         object Biblioteca : Nivel()
         object Ajustes : Nivel()
         object Locales : Nivel()
+        object Carpetas : Nivel()
+        data class Carpeta(val nombre: String) : Nivel()
         data class Lista(val nombre: String) : Nivel()
         data class Consulta(val q: String) : Nivel()
         data class YtLista(val url: String, val titulo: String) : Nivel()
@@ -172,6 +179,12 @@ class MainActivity : AppCompatActivity() {
             val c = controlador ?: return@setOnClickListener
             if (c.currentPosition > 4000) c.seekTo(0) else if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem()
         }
+        findViewById<View>(R.id.sheetRetrocede).setOnClickListener {
+            controlador?.let { if (it.isCommandAvailable(Player.COMMAND_SEEK_BACK)) it.seekBack() }
+        }
+        findViewById<View>(R.id.sheetAvanza).setOnClickListener {
+            controlador?.let { if (it.isCommandAvailable(Player.COMMAND_SEEK_FORWARD)) it.seekForward() }
+        }
         sheetBarra.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progreso: Int, usuario: Boolean) {
                 if (usuario) {
@@ -222,6 +235,8 @@ class MainActivity : AppCompatActivity() {
     // ------------------------------------------------------------- navegacion
 
     private fun mostrar(n: Nivel, enfocar: Boolean = false) {
+        modoSeleccion = false
+        seleccion.clear()
         pila.add(n)
         pintarNivel(n)
         cajaBuscador.visibility = if (n is Nivel.Buscar) View.VISIBLE else View.GONE
@@ -240,6 +255,8 @@ class MainActivity : AppCompatActivity() {
             is Nivel.Biblioteca -> nivelBiblioteca()
             is Nivel.Ajustes -> nivelAjustes()
             is Nivel.Locales -> nivelLocales()
+            is Nivel.Carpetas -> nivelCarpetas()
+            is Nivel.Carpeta -> nivelCarpeta(n.nombre)
             is Nivel.Lista -> nivelLista(n.nombre)
             is Nivel.Consulta -> nivelConsulta(n.q)
             is Nivel.YtLista -> nivelYtLista(n.url, n.titulo)
@@ -381,6 +398,7 @@ class MainActivity : AppCompatActivity() {
         cabecera.text = getString(R.string.audio_movil)
         val out = ArrayList<Row>()
         val pistas = Lib.localTracks
+        filaGuardar = -1
         if (pistas.isEmpty()) {
             out.add(Row.carpeta(getString(R.string.sin_permiso), "Toca para pedir permiso") {
                 permisoAudioSiHaceFalta()
@@ -388,9 +406,178 @@ class MainActivity : AppCompatActivity() {
             fijar(out)
             return
         }
-        out.add(Row.accion(getString(R.string.reproducir_todo), "${pistas.size} audios") { reproducirTodo() })
-        pistas.forEach { t -> out.add(Row.pista(t, sub(t), null, Estado.esEscuchado(t.mediaId()))) }
+        if (modoSeleccion) {
+            accionesSeleccion(out)
+        } else {
+            out.add(Row.accion(getString(R.string.reproducir_todo), "${pistas.size} audios") { reproducirTodo() })
+            out.add(
+                Row.accion(
+                    "Elegir canciones para una lista",
+                    "Marca las que quieras y guárdalas juntas"
+                ) {
+                    modoSeleccion = true
+                    seleccion.clear()
+                    pintar()
+                }
+            )
+            out.add(
+                Row.accion("Ver por carpetas", "${Lib.localCarpetas.size} carpetas con audio") {
+                    mostrar(Nivel.Carpetas)
+                }
+            )
+        }
+        pistas.forEach { t ->
+            val marcada = modoSeleccion && seleccion.contains(t.mediaId())
+            val hecho = if (modoSeleccion) marcada else Estado.esEscuchado(t.mediaId())
+            out.add(Row.pista(t, sub(t), null, hecho))
+        }
         fijar(out)
+        if (modoSeleccion) filaGuardar = 1  // fila 0 = cabecera, fila 1 = boton guardar
+    }
+
+    /** Filas de arriba del modo seleccion: guardar, todos y cancelar. */
+    private fun accionesSeleccion(out: ArrayList<Row>) {
+        out.add(Row.cabecera("Elegir canciones · ${seleccion.size} marcadas"))
+        out.add(
+            Row.accion(
+                "Guardar ${seleccion.size} en una lista",
+                if (seleccion.isEmpty()) "Primero marca alguna canción" else "Elige la lista de destino"
+            ) {
+                if (seleccion.isEmpty()) {
+                    Toast.makeText(this, "No has marcado ninguna canción", Toast.LENGTH_SHORT).show()
+                } else {
+                    guardarSeleccion()
+                }
+            }
+        )
+        out.add(Row.accion("Marcar todos", "${Lib.localTracks.size} audios de este móvil") {
+            seleccion.clear()
+            Lib.localTracks.forEach { seleccion.add(it.mediaId()) }
+            pintar()
+        })
+        out.add(Row.accion("Cancelar selección", "Volver a la lista normal") {
+            modoSeleccion = false
+            seleccion.clear()
+            pintar()
+        })
+    }
+
+    /** Marca o desmarca una cancion sin repintar toda la lista (no salta el scroll). */
+    private fun marcarSeleccion(posicion: Int, t: Track) {
+        val id = t.mediaId()
+        val marcada = if (seleccion.contains(id)) {
+            seleccion.remove(id)
+            false
+        } else {
+            seleccion.add(id)
+            true
+        }
+        if (posicion in filas.indices) {
+            filas[posicion] = filas[posicion].copy(hecho = marcada)
+            adaptador.notifyItemChanged(posicion)
+        }
+        actualizarContadorSeleccion()
+        val i = filaGuardar - 1
+        if (i in filas.indices && filas[i].tipo == Row.Tipo.CABECERA) {
+            filas[i] = filas[i].copy(titulo = "Elegir canciones · ${seleccion.size} marcadas")
+            adaptador.notifyItemChanged(i)
+        }
+    }
+
+    private fun actualizarContadorSeleccion() {
+        val i = filaGuardar
+        if (i < 0 || i >= filas.size) return
+        filas[i] = filas[i].copy(
+            titulo = "Guardar ${seleccion.size} en una lista",
+            sub = if (seleccion.isEmpty()) "Primero marca alguna canción" else "Elige la lista de destino"
+        )
+        adaptador.notifyItemChanged(i)
+    }
+
+    /** Mete las canciones marcadas en la lista que se elija. */
+    private fun guardarSeleccion() {
+        val elegidas = Lib.localTracks.filter { seleccion.contains(it.mediaId()) }
+        if (elegidas.isEmpty()) return
+        elegirLista { destino ->
+            for (t in elegidas) Lib.store.anadir(destino, t)
+            Toast.makeText(
+                this,
+                "${elegidas.size} canciones guardadas en \"$destino\"",
+                Toast.LENGTH_LONG
+            ).show()
+            modoSeleccion = false
+            seleccion.clear()
+            pintar()
+        }
+    }
+
+    private fun nivelCarpetas() {
+        cabecera.text = "Carpetas con audio"
+        val out = ArrayList<Row>()
+        val mapa = Lib.localCarpetas
+        if (mapa.isEmpty()) {
+            out.add(
+                Row.carpeta(
+                    "No hay carpetas",
+                    "No se ha encontrado audio; toca para volver a revisar"
+                ) {
+                    Lib.refrescarLocal(this)
+                    pintar()
+                }
+            )
+            fijar(out)
+            return
+        }
+        mapa.forEach { (nombre, lista) ->
+            out.add(
+                Row.carpeta(nombre, "${lista.size} audios", lista.firstOrNull()?.art ?: "") {
+                    mostrar(Nivel.Carpeta(nombre))
+                }
+            )
+        }
+        fijar(out)
+    }
+
+    private fun nivelCarpeta(nombre: String) {
+        cabecera.text = nombre.substringAfterLast('/')
+        val lista = Lib.pistasDeCarpeta(nombre)
+        val out = ArrayList<Row>()
+        filaGuardar = -1
+        if (lista.isEmpty()) {
+            out.add(Row.carpeta("Carpeta vacía", nombre))
+            fijar(out)
+            return
+        }
+        if (modoSeleccion) {
+            accionesSeleccion(out)
+        } else {
+            out.add(Row.accion("Reproducir la carpeta", "${lista.size} audios") {
+                reproducirCola(lista, 0)
+            })
+            out.add(Row.accion("Añadir la carpeta entera a una lista", "${lista.size} audios") {
+                elegirLista { destino ->
+                    for (t in lista) Lib.store.anadir(destino, t)
+                    Toast.makeText(
+                        this,
+                        "${lista.size} audios de \"${nombre.substringAfterLast('/')}\" en \"$destino\"",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    pintar()
+                }
+            })
+            out.add(Row.accion("Elegir canciones sueltas", "Marcar solo algunas de esta carpeta") {
+                modoSeleccion = true
+                seleccion.clear()
+                pintar()
+            })
+        }
+        lista.forEach { t ->
+            val marcada = modoSeleccion && seleccion.contains(t.mediaId())
+            val hecho = if (modoSeleccion) marcada else Estado.esEscuchado(t.mediaId())
+            out.add(Row.pista(t, sub(t), null, hecho))
+        }
+        fijar(out)
+        if (modoSeleccion) filaGuardar = 1  // fila 0 = cabecera, fila 1 = boton guardar
     }
 
     private fun nivelLista(nombre: String) {
@@ -933,6 +1120,11 @@ class MainActivity : AppCompatActivity() {
                         else ContextCompat.getColor(this@MainActivity, R.color.texto)
                     )
                     holder.itemView.setOnClickListener {
+                        val tSel = fila.track
+                        if (modoSeleccion && tSel != null && tSel.kind == "local") {
+                            marcarSeleccion(position, tSel)
+                            return@setOnClickListener
+                        }
                         when {
                             fila.tipo == Row.Tipo.PISTA -> reproducirFila(fila)
                             fila.tipo == Row.Tipo.CARGA -> siguientePagina?.let { cargarPagina(it) }

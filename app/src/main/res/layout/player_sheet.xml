@@ -110,6 +110,15 @@
             android:orientation="horizontal">
 
             <ImageButton
+                android:id="@+id/sheetRetrocede"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Retroceder 15 segundos"
+                android:src="@drawable/ic_fr"
+                android:tint="@color/texto" />
+
+            <ImageButton
                 android:id="@+id/sheetAnterior"
                 android:layout_width="52dp"
                 android:layout_height="52dp"
@@ -143,6 +152,15 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/app_name"
                 android:src="@drawable/ic_siguiente"
+                android:tint="@color/texto" />
+
+            <ImageButton
+                android:id="@+id/sheetAvanza"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Avanzar 30 segundos"
+                android:src="@drawable/ic_ff"
                 android:tint="@color/texto" />
         </LinearLayout>
 

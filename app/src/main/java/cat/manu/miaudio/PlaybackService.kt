@@ -108,6 +108,10 @@ class PlaybackService : MediaLibraryService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
+            // Sin estos dos incrementos Android Auto no pinta los botones de
+            // retroceder/avanzar en la pantalla del coche. Atras 15 s, adelante 30 s.
+            .setSeekBackIncrementMs(15_000)
+            .setSeekForwardIncrementMs(30_000)
             .build()
 
         reproductor.addListener(object : Player.Listener {
@@ -287,6 +291,13 @@ class PlaybackService : MediaLibraryService() {
         val mid = item.mediaId
         val esLocal = mid.startsWith(Ids.LOCAL)
         val id = if (esLocal) mid.removePrefix(Ids.LOCAL) else mid.removePrefix(Ids.YTVID)
+        // Si es un fichero del movil se recupera el original: lleva la URI del
+        // volumen (interna, SD o USB) y la carpeta, y asi la cola guardada sigue
+        // funcionando aunque el audio este en la tarjeta.
+        if (esLocal) {
+            val original = Lib.localTracks.firstOrNull { it.id == id }
+            if (original != null) return original
+        }
         val md = item.mediaMetadata
         return Track(
             kind = if (esLocal) "local" else "yt",
@@ -382,7 +393,9 @@ class PlaybackService : MediaLibraryService() {
             parentId: String,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<Void>> {
-            if (parentId == Ids.LOCALES) Lib.refrescarLocal(this@PlaybackService)
+            if (parentId == Ids.LOCALES || parentId == Ids.CARPETAS) {
+                Lib.refrescarLocal(this@PlaybackService)
+            }
             return Futures.immediateFuture(LibraryResult.ofVoid())
         }
 
@@ -447,12 +460,25 @@ class PlaybackService : MediaLibraryService() {
         return when {
             parentId == Ids.ROOT -> listOf(
                 carpeta(Ids.LOCALES, getString(R.string.locales), "${Lib.localTracks.size} audios"),
+                carpeta(Ids.CARPETAS, "Carpetas del móvil", "${Lib.localCarpetas.size} carpetas"),
                 carpeta(Ids.LISTAS, getString(R.string.listas), "${Lib.store.listas.size} listas"),
                 carpeta(Ids.YT, getString(R.string.youtube), "Busca en YouTube")
             )
 
             parentId == Ids.LOCALES -> Lib.localTracks
                 .drop(desde).take(pageSize).map { it.toMediaItem() }
+
+            parentId == Ids.CARPETAS -> Lib.localCarpetas.keys.drop(desde).take(pageSize).map { nombre ->
+                val n = Lib.pistasDeCarpeta(nombre).size
+                carpeta(Ids.CARPETA + URLEncoder.encode(nombre, "UTF-8"), nombre, "$n audios")
+            }
+
+            parentId.startsWith(Ids.CARPETA) -> {
+                val nombre = runCatching {
+                    URLDecoder.decode(parentId.removePrefix(Ids.CARPETA), "UTF-8")
+                }.getOrDefault("")
+                Lib.pistasDeCarpeta(nombre).drop(desde).take(pageSize).map { it.toMediaItem() }
+            }
 
             parentId == Ids.LISTAS -> Lib.store.listas.drop(desde).take(pageSize).mapIndexed { i, l ->
                 val va = if (l.indice > 0 && l.indice < l.pistas.size) " - va por ${l.indice + 1}" else ""

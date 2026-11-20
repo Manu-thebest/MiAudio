@@ -123,6 +123,11 @@ object Lib {
     var localTracks: List<Track> = emptyList()
         private set
 
+    /** Los mismos audios agrupados por carpeta: "Memoria interna/Music/...". */
+    @Volatile
+    var localCarpetas: Map<String, List<Track>> = emptyMap()
+        private set
+
     @Volatile
     var permisoAudio: Boolean = false
         private set
@@ -137,9 +142,16 @@ object Lib {
     fun refrescarLocal(ctx: Context): List<Track> {
         val t = if (tienePermiso(ctx)) scanLocal(ctx) else emptyList()
         localTracks = t
+        localCarpetas = t.groupBy { it.carpeta.ifBlank { "Sin carpeta" } }
+            .toList()
+            .sortedBy { it.first.lowercase() }
+            .toMap()
         permisoAudio = tienePermiso(ctx)
         return t
     }
+
+    /** Audios de una carpeta (para el coche y para la pantalla de carpetas). */
+    fun pistasDeCarpeta(nombre: String): List<Track> = localCarpetas[nombre] ?: emptyList()
 
     private fun tienePermiso(ctx: Context): Boolean {
         val p = if (android.os.Build.VERSION.SDK_INT >= 33)
@@ -149,42 +161,96 @@ object Lib {
         return ctx.checkSelfPermission(p) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
+    /** Almacenamientos con audio: (volumen de MediaStore, nombre en pantalla). */
+    private fun volumenes(ctx: Context): List<Pair<String, String>> {
+        val out = ArrayList<Pair<String, String>>()
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            val sm = ctx.getSystemService(Context.STORAGE_SERVICE) as? android.os.storage.StorageManager
+            val nombres = runCatching { MediaStore.getExternalVolumeNames(ctx) }
+                .getOrDefault(setOf(MediaStore.VOLUME_EXTERNAL_PRIMARY))
+            for (v in nombres.sorted()) {
+                val etiqueta = if (v == MediaStore.VOLUME_EXTERNAL_PRIMARY) {
+                    "Memoria interna"
+                } else {
+                    val d = runCatching {
+                        sm?.getStorageVolume(File("/storage/$v"))?.getDescription(ctx)
+                    }.getOrNull()
+                    d?.takeIf { it.isNotBlank() } ?: "Memoria externa"
+                }
+                out.add(v to etiqueta)
+            }
+        }
+        if (out.isEmpty()) out.add("external" to "Memoria interna")
+        return out
+    }
+
+    /**
+     * Recorre todos los almacenamientos (interna, tarjeta SD y USB) y devuelve
+     * los audios con su URI real y su carpeta, para poder hacer listas con ellos.
+     */
     private fun scanLocal(ctx: Context): List<Track> {
         val out = ArrayList<Track>()
-        val proj = arrayOf(
-            MediaStore.Audio.Media._ID,
-            MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.ARTIST,
-            MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.DISPLAY_NAME,
-            MediaStore.Audio.Media.ALBUM_ID,
-            MediaStore.Audio.Media.ALBUM
-        )
+        val nuevaApi = android.os.Build.VERSION.SDK_INT >= 29
+        val proj = ArrayList<String>().apply {
+            add(MediaStore.Audio.Media._ID)          // 0
+            add(MediaStore.Audio.Media.TITLE)        // 1
+            add(MediaStore.Audio.Media.ARTIST)       // 2
+            add(MediaStore.Audio.Media.DURATION)     // 3
+            add(MediaStore.Audio.Media.DISPLAY_NAME) // 4
+            add(MediaStore.Audio.Media.ALBUM_ID)     // 5
+            add(MediaStore.Audio.Media.ALBUM)        // 6
+            if (nuevaApi) add(MediaStore.Audio.Media.RELATIVE_PATH) // 7
+            else add(MediaStore.Audio.Media.DATA)                   // 7
+        }.toTypedArray()
         val sel = "${MediaStore.Audio.Media.DURATION} >= 20000"
-        runCatching {
-            ctx.contentResolver.query(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                proj,
-                sel,
-                null,
-                "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
-            )?.use { c ->
-                while (c.moveToNext()) {
-                    val id = c.getLong(0)
-                    val nombre = c.getString(1) ?: c.getString(4) ?: "(sin titulo)"
-                    val artista = c.getString(2) ?: ""
-                    val dur = c.getLong(3)
-                    val albumId = c.getLong(5)
-                    val album = c.getString(6) ?: ""
-                    val art = if (albumId > 0)
-                        Uri.parse("content://media/external/audio/albumart").buildUpon()
-                            .appendPath(albumId.toString()).build().toString()
-                    else ""
-                    out.add(Track.local(id, nombre, artista.ifBlank { album }, dur, art))
+        val orden = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
+
+        for ((volumen, etiqueta) in volumenes(ctx)) {
+            val coleccion = if (nuevaApi) MediaStore.Audio.Media.getContentUri(volumen)
+            else MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            runCatching {
+                ctx.contentResolver.query(coleccion, proj, sel, null, orden)?.use { c ->
+                    while (c.moveToNext()) {
+                        val idReal = c.getLong(0)
+                        val nombre = c.getString(1) ?: c.getString(4) ?: "(sin titulo)"
+                        val artista = c.getString(2) ?: ""
+                        val dur = c.getLong(3)
+                        val albumId = c.getLong(5)
+                        val album = c.getString(6) ?: ""
+                        val ruta = c.getString(7) ?: ""
+
+                        // Carpeta con el almacenamiento delante: "Memoria interna/Music/X".
+                        val relativa = if (nuevaApi) ruta.trimEnd('/')
+                        else ruta.substringBeforeLast('/', "").trimEnd('/')
+                        val carpeta = if (relativa.isBlank()) etiqueta else "$etiqueta/$relativa"
+
+                        val art = if (albumId > 0L && (volumen == "external_primary" || !nuevaApi))
+                            Uri.parse("content://media/external/audio/albumart").buildUpon()
+                                .appendPath(albumId.toString()).build().toString()
+                        else ""
+
+                        // Id unico: en la memoria principal vale el de MediaStore;
+                        // en SD/USB se le pone el volumen delante por si se repite.
+                        val id = if (volumen == "external_primary" || !nuevaApi) idReal.toString()
+                        else "$volumen:$idReal"
+
+                        out.add(
+                            Track.local(
+                                id = id,
+                                title = nombre,
+                                artist = artista.ifBlank { album },
+                                durMs = dur,
+                                art = art,
+                                uriPropia = android.content.ContentUris
+                                    .withAppendedId(coleccion, idReal).toString(),
+                                carpeta = carpeta
+                            )
+                        )
+                    }
                 }
             }
         }
-        return out
+        return out.sortedBy { it.title.lowercase() }
     }
 }
 

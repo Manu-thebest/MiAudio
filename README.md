@@ -6,7 +6,7 @@ Reproductor Android con estética oscura tipo Spotify para escuchar **el audio d
 
 - **Búsqueda en YouTube** con paginación igual que la web (40 resultados de entrada y sigue bajando de 20 en 20, sin repetidos).
 - **Listas de YouTube completas** como álbumes: se pueden escuchar enteras o guardar dentro de una lista propia; las listas mixtas se agrupan por álbum de origen.
-- **Audio local** del móvil (MediaStore) con sus listas.
+- **Audio local** del móvil con sus listas: memoria interna, tarjeta SD y USB; se puede elegir canción a canción o **carpeta entera** (con «ver por carpetas»).
 - **Recomendados y reproducción continua** al terminar una cola (desactivable en Ajustes).
 - **«Seguir escuchando»** en la portada con lo último que sonó.
 
@@ -16,6 +16,10 @@ Reproductor Android con estética oscura tipo Spotify para escuchar **el audio d
 - **Caché sin cobertura**: mientras suena un episodio se descargan los dos siguientes; sin datos sigue la serie. Si ya está descargado, no gasta datos. Límite configurable (1,5 GB, borra lo más antiguo) y vaciado manual.
 - **Marca de escuchados**: check verde y título atenuado en lo ya oído (85 % de la duración o final), también visible en el coche.
 - **Posición por lista**: cada lista guarda el capítulo por el que va y cada episodio recuerda su minuto. Al abrir una lista se puede **seguir donde lo dejé** o empezar desde el principio.
+
+## Mandos del coche
+
+- **Anterior / siguiente** y **retroceder 15 s / avanzar 30 s** en la pantalla de Android Auto y en el reproductor de la app.
 
 ## Compilar
 
