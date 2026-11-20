@@ -128,6 +128,16 @@
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_play"
                     android:tint="@color/texto" />
+
+                <ImageButton
+                    android:id="@+id/miniParar"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@null"
+                    android:contentDescription="Parar y quitar el reproductor"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_cerrar"
+                    android:tint="@color/texto2" />
             </LinearLayout>
         </FrameLayout>
 

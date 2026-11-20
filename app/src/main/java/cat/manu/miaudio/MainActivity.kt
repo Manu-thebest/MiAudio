@@ -185,6 +185,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.sheetAvanza).setOnClickListener {
             controlador?.let { if (it.isCommandAvailable(Player.COMMAND_SEEK_FORWARD)) it.seekForward() }
         }
+        findViewById<View>(R.id.miniParar).setOnClickListener { parar() }
+        findViewById<View>(R.id.sheetParar).setOnClickListener { parar() }
         sheetBarra.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progreso: Int, usuario: Boolean) {
                 if (usuario) {
@@ -879,6 +881,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ------------------------------------------------------------- mini player
+
+    /** Para la musica del todo, vacia la cola y quita el reproductor de la pantalla. */
+    private fun parar() {
+        val c = controlador
+        if (c != null) {
+            c.stop()
+            c.clearMediaItems()
+        }
+        miniPlayer.visibility = View.GONE
+        cerrarSheet()
+        Toast.makeText(this, "Música parada", Toast.LENGTH_SHORT).show()
+    }
 
     private fun pintarMini() {
         val c = controlador
