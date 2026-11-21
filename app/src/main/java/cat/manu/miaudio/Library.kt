@@ -387,6 +387,11 @@ object Estado {
         get() = p().getBoolean("cacheOffline", true)
         set(v) = p().edit().putBoolean("cacheOffline", v).apply()
 
+    /** Cuantas canciones por delante se van descargando (0 = ninguna). */
+    var porDelante: Int
+        get() = p().getInt("porDelante", 5)
+        set(v) = p().edit().putInt("porDelante", v).apply()
+
     // ---- ya escuchados (marca visual)
     private var escuchadosMemoria: MutableSet<String>? = null
 

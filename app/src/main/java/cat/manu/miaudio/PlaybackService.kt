@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -17,6 +18,7 @@ import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.LibraryParams
@@ -42,15 +44,22 @@ class PlaybackService : MediaLibraryService() {
     private val io = Executors.newFixedThreadPool(2)
 
     // Descargas por delante en su propio hilo: no deben frenar las busquedas.
-    private val descargas = Executors.newFixedThreadPool(2)
+    private val descargas = Executors.newFixedThreadPool(3)
     private val bajando = java.util.Collections.synchronizedSet(HashSet<String>())
 
     private val principal = Handler(Looper.getMainLooper())
 
     private var radioEnMarcha = false
 
-    /** Cuantas pistas por delante se van descargando. */
-    private val POR_DELANTE = 3
+    /** Tope de pistas que se descargan por delante, aunque el ajuste pida mas. */
+    private val POR_DELANTE_MAX = 12
+
+    /** Saltos automaticos seguidos por pistas que no se pueden abrir (evita saltar toda la lista). */
+    private var saltosSeguidos = 0
+
+    /** Fila de "reproducir en orden aleatorio" que se cuela la primera en cada lista. */
+    private val MEZCLA = "mezclar:"
+
 
     // seguimiento de la pista que esta sonando (para marcas y reanudacion)
     private var sonandoId = ""
@@ -109,7 +118,11 @@ class PlaybackService : MediaLibraryService() {
         }
 
         reproductor = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(resolutor))
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(resolutor)
+                    // Si la cobertura va y viene, reintenta en vez de cortar la cancion.
+                    .setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(10))
+            )
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -122,10 +135,10 @@ class PlaybackService : MediaLibraryService() {
             .setLoadControl(
                 DefaultLoadControl.Builder()
                     .setBufferDurationsMs(
-                        60_000,    // minimo por delante: 1 minuto
-                        600_000,   // hasta 10 minutos si hay red
+                        120_000,   // minimo por delante: 2 minutos
+                        900_000,   // hasta 15 minutos si hay red
                         2_500,     // para empezar a sonar
-                        15_000     // para reanudar tras un corte
+                        30_000     // para reanudar tras un corte
                     )
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .build()
@@ -158,7 +171,28 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onIsPlayingChanged(esta: Boolean) {
-                if (esta) precargarSiguientes() else cerrarAnterior(terminada = false)
+                if (esta) {
+                    saltosSeguidos = 0
+                    precargarSiguientes()
+                } else cerrarAnterior(terminada = false)
+            }
+
+            // Una pista que no se puede abrir (sin cobertura y sin descargar) no
+            // debe parar la musica: se salta a la siguiente de la lista.
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                Log.w("MiAudio", "no se pudo abrir la pista: ${error.errorCodeName}")
+                if (saltosSeguidos >= 3) return
+                if (reproductor.hasNextMediaItem()) {
+                    saltosSeguidos++
+                    reproductor.seekToNextMediaItem()
+                    reproductor.prepare()
+                    reproductor.play()
+                    Toast.makeText(
+                        this@PlaybackService,
+                        "Esa canción no se pudo abrir sin cobertura; sigo con la siguiente",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         })
 
@@ -256,9 +290,11 @@ class PlaybackService : MediaLibraryService() {
      */
     private fun precargarSiguientes() {
         if (!Estado.cacheOffline) return
+        val cuantas = Estado.porDelante.coerceIn(0, POR_DELANTE_MAX)
+        if (cuantas <= 0) return
         val base = reproductor.currentMediaItemIndex
         if (base < 0) return
-        for (salto in 1..POR_DELANTE) {
+        for (salto in 1..cuantas) {
             val objetivo = base + salto
             if (objetivo !in 0 until reproductor.mediaItemCount) break
             val item = reproductor.getMediaItemAt(objetivo)
@@ -481,8 +517,44 @@ class PlaybackService : MediaLibraryService() {
         entrada: List<MediaItem>,
         indice: Int
     ): Pair<List<MediaItem>, Int> {
-        if (entrada.size != 1) return entrada to indice
+        if (entrada.size != 1) {
+            // Algun coche manda la lista entera con la fila del aleatorio dentro:
+            // esa fila se cambia por las canciones mezcladas y se recoloca el indice.
+            if (entrada.none { it.mediaId.startsWith(MEZCLA) }) return entrada to indice
+            val limpia = ArrayList<MediaItem>()
+            var nuevo = 0
+            for ((i, it) in entrada.withIndex()) {
+                if (i == indice) nuevo = limpia.size
+                if (it.mediaId.startsWith(MEZCLA)) limpia.addAll(expandir(listOf(it), 0).first)
+                else limpia.add(it)
+            }
+            return limpia to nuevo.coerceIn(0, (limpia.size - 1).coerceAtLeast(0))
+        }
         val id = entrada[0].mediaId
+
+        // Fila "reproducir en orden aleatorio": se mezcla la lista o carpeta entera.
+        if (id.startsWith(MEZCLA)) {
+            val resto = id.removePrefix(MEZCLA)
+            if (resto.startsWith(Ids.CARPETA)) {
+                val nombre = runCatching {
+                    URLDecoder.decode(resto.removePrefix(Ids.CARPETA), "UTF-8")
+                }.getOrDefault("")
+                val deCarpeta = Lib.pistasDeCarpeta(nombre)
+                if (deCarpeta.isNotEmpty()) {
+                    val mezcladas = ArrayList(deCarpeta).also { it.shuffle() }
+                    return mezcladas.map { it.toMediaItem() } to 0
+                }
+            } else {
+                val i = resto.toIntOrNull()
+                val lista = i?.let { Lib.store.listas.getOrNull(it) }
+                if (lista != null && lista.pistas.isNotEmpty()) {
+                    val mezcladas = ArrayList(lista.pistas).also { it.shuffle() }
+                    Estado.colaOrigen = Ids.PL + i
+                    return mezcladas.map { it.toMediaItem() } to 0
+                }
+            }
+            return entrada to indice
+        }
 
         // Listas guardadas del usuario.
         Lib.store.listas.forEachIndexed { i, lista ->
@@ -520,6 +592,17 @@ class PlaybackService : MediaLibraryService() {
 
     private fun raiz(): MediaItem = carpeta(Ids.ROOT, getString(R.string.app_name), "Tus audios, listas y YouTube")
 
+    /** Fila pulsable que mezcla la lista entera y empieza a sonar. */
+    private fun filaAleatorio(mediaId: String, cuantas: Int): MediaItem {
+        val meta = MediaMetadata.Builder()
+            .setTitle("Reproducir en orden aleatorio")
+            .setArtist("$cuantas canciones al azar")
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .build()
+        return MediaItem.Builder().setMediaId(mediaId).setMediaMetadata(meta).build()
+    }
+
     private fun carpeta(mediaId: String, titulo: String, subtitulo: String = ""): MediaItem {
         val meta = MediaMetadata.Builder()
             .setTitle(titulo)
@@ -552,7 +635,11 @@ class PlaybackService : MediaLibraryService() {
                 val nombre = runCatching {
                     URLDecoder.decode(parentId.removePrefix(Ids.CARPETA), "UTF-8")
                 }.getOrDefault("")
-                Lib.pistasDeCarpeta(nombre).drop(desde).take(pageSize).map { it.toMediaItem() }
+                val deCarpeta = Lib.pistasDeCarpeta(nombre)
+                val canciones = deCarpeta.drop(desde).take(pageSize).map { it.toMediaItem() }
+                if (page == 0 && deCarpeta.size > 1) {
+                    listOf(filaAleatorio(MEZCLA + Ids.CARPETA + parentId.removePrefix(Ids.CARPETA), deCarpeta.size)) + canciones
+                } else canciones
             }
 
             parentId == Ids.LISTAS -> Lib.store.listas.drop(desde).take(pageSize).mapIndexed { i, l ->
@@ -563,7 +650,14 @@ class PlaybackService : MediaLibraryService() {
             parentId.startsWith(Ids.PL) -> {
                 val indice = parentId.removePrefix(Ids.PL).toIntOrNull()
                 val lista = indice?.let { Lib.store.listas.getOrNull(it) }
-                lista?.pistas?.drop(desde)?.take(pageSize)?.map { it.toMediaItem() } ?: emptyList()
+                if (lista == null) emptyList()
+                else {
+                    val canciones = lista.pistas.drop(desde).take(pageSize).map { it.toMediaItem() }
+                    // La primera fila de cada lista es el aleatorio; debajo, las canciones.
+                    if (page == 0 && lista.pistas.size > 1) {
+                        listOf(filaAleatorio(MEZCLA + indice, lista.pistas.size)) + canciones
+                    } else canciones
+                }
             }
 
             parentId == Ids.YT -> Estado.recientes().drop(desde).take(pageSize).map {
@@ -627,6 +721,14 @@ class PlaybackService : MediaLibraryService() {
     private fun elemento(mediaId: String): MediaItem? = when {
         mediaId == Ids.ROOT -> raiz()
         mediaId == Ids.LOCALES || mediaId == Ids.LISTAS || mediaId == Ids.YT -> carpeta(mediaId, mediaId)
+        mediaId.startsWith(MEZCLA) -> MediaItem.Builder().setMediaId(mediaId)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle("Reproducir en orden aleatorio")
+                    .setIsPlayable(true)
+                    .setIsBrowsable(false)
+                    .build()
+            ).build()
         mediaId.startsWith(Ids.PL) || mediaId.startsWith(Ids.YTQ) || mediaId.startsWith(Ids.YTPL) ->
             carpeta(mediaId, mediaId)
         mediaId.startsWith(Ids.LOCAL) -> {

@@ -13,8 +13,9 @@ Reproductor Android con estética oscura tipo Spotify para escuchar **el audio d
 ## Pensado para podcasts en el coche
 
 - **Arranca solo al conectar Android Auto** por el último elemento reproducido, en el minuto exacto donde se quedó (interruptor en Ajustes).
-- **Caché sin cobertura**: mientras suena una canción se descargan **las tres siguientes** de la lista, en su propio hilo para no frenar las búsquedas; sin cobertura sigue la serie sin pararse. Si ya está descargado, no gasta datos. Límite configurable (1,5 GB, borra lo más antiguo) y vaciado manual.
-- **Buffer largo**: la app guarda hasta 1 minuto por delante como mínimo y hasta 10 minutos si la red va bien, así un túnel o un tramo sin cobertura no corta la canción en curso.
+- **Caché sin cobertura**: mientras suena una canción se descargan **las cinco siguientes** de la lista (Ajustes → «Canciones descargadas por delante»: ninguna, 3, 5 o 10), en tres hilos para no frenar las búsquedas; si ya está descargada no gasta datos. Límite configurable (1,5 GB, borra lo más antiguo) y vaciado manual.
+- **Buffer largo**: la app guarda hasta 2 minutos por delante como mínimo y hasta 15 minutos si la red va bien, y **reintenta hasta 10 veces** cuando la cobertura va y viene. Si una canción no se puede abrir sin cobertura, la app **pasa sola a la siguiente** en vez de quedarse parada.
+- **Aleatorio en el coche**: al abrir una lista (o una carpeta) desde Android Auto, la **primera entrada es «Reproducir en orden aleatorio»**; debajo siguen las canciones sueltas para elegir la que sea. También en el móvil.
 - **Marca de escuchados**: check verde y título atenuado en lo ya oído (85 % de la duración o final), también visible en el coche.
 - **Posición por lista**: cada lista guarda el capítulo por el que va y cada episodio recuerda su minuto. Al abrir una lista se puede **seguir donde lo dejé** o empezar desde el principio.
 

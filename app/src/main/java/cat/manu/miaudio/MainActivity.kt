@@ -851,6 +851,15 @@ class MainActivity : AppCompatActivity() {
             }
         )
         out.add(
+            Row.accion(
+                "Canciones descargadas por delante",
+                if (Estado.porDelante <= 0) "Ninguna"
+                else "${Estado.porDelante} de la lista, para los tramos sin cobertura"
+            ) {
+                dialogoPorDelante()
+            }
+        )
+        out.add(
             Row.accion("Vaciar audio guardado", "${AudioCache.cuantos()} audios · ${mb(AudioCache.tamanoTotal())}") {
                 AudioCache.vaciar()
                 Toast.makeText(this, "Audio guardado borrado", Toast.LENGTH_SHORT).show()
@@ -1313,6 +1322,33 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+            .show()
+    }
+
+    /** Cuantas canciones se van descargando por delante de la que suena. */
+    private fun dialogoPorDelante() {
+        val opciones = arrayOf(
+            "Ninguna",
+            "3 canciones",
+            "5 canciones",
+            "10 canciones"
+        )
+        val valores = intArrayOf(0, 3, 5, 10)
+        val actual = valores.indexOfFirst { it == Estado.porDelante }.let { if (it < 0) 1 else it }
+        AlertDialog.Builder(this)
+            .setTitle("Canciones descargadas por delante")
+            .setSingleChoiceItems(opciones, actual) { d, cual ->
+                Estado.porDelante = valores[cual]
+                d.dismiss()
+                Toast.makeText(
+                    this,
+                    if (valores[cual] <= 0) "Ya no se descarga nada por delante"
+                    else "Se descargarán ${valores[cual]} canciones por delante",
+                    Toast.LENGTH_SHORT
+                ).show()
+                pintar()
+            }
+            .setNegativeButton("Cancelar", null)
             .show()
     }
 
