@@ -41,6 +41,7 @@ En Ajustes, sección «Apariencia» → **Tema**: **Oscuro** (el de siempre), **
 - **Marcar como escuchado / no escuchado** a mano, sin esperar al 85 %.
 - **No enseñar lo ya escuchado**: oculta de las listas lo que ya está oído, con un acceso al final para volver a verlo.
 - **Importar `.m3u` / `.m3u8`**: se lee la playlist, se empareja cada línea con el audio del móvil (por nombre de fichero o título, sin extensión) y se crea la lista. Las líneas que son enlaces `http` se añaden como streaming; lo que no se encuentra se cuenta y se avisa.
+- **Borrar una lista**: dentro de la lista, entrada **«Borrar esta lista»** (también en las listas vacías). Pregunta antes y solo borra la lista y su orden: las canciones del móvil y los enlaces de YouTube se quedan como están.
 - **Quitar canciones que ya no están**: repasa las listas y borra las pistas locales que han desaparecido (fichero borrado o memoria desconectada). Los enlaces de YouTube no se tocan.
 
 ## Importar de Spotify

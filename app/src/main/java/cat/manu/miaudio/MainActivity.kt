@@ -719,6 +719,11 @@ class MainActivity : AppCompatActivity() {
         val out = ArrayList<Row>()
         if (l.pistas.isEmpty()) {
             out.add(Row.carpeta("Lista vacía", "Añade canciones desde Buscar o Biblioteca"))
+            out.add(
+                Row.accion("Borrar esta lista", "Se borra la lista, no las canciones") {
+                    dialogoBorrarLista(nombre)
+                }
+            )
             fijar(out)
             return
         }
@@ -750,6 +755,11 @@ class MainActivity : AppCompatActivity() {
         out.add(
             Row.accion("Reordenar o quitar canciones", "Mantén pulsada una canción de la lista") {
                 dialogoOrdenar(nombre)
+            }
+        )
+        out.add(
+            Row.accion("Borrar esta lista", "Se borra la lista, no las canciones") {
+                dialogoBorrarLista(nombre)
             }
         )
         var grupoActual: String? = null
@@ -1302,6 +1312,26 @@ class MainActivity : AppCompatActivity() {
                         pintar()
                     }
                 }
+            }
+            .show()
+    }
+
+    /** Borra una lista entera, preguntando antes. Las canciones no se tocan. */
+    private fun dialogoBorrarLista(nombre: String) {
+        AlertDialog.Builder(this)
+            .setTitle("¿Borrar \"$nombre\"?")
+            .setMessage(
+                "Se borra la lista y su orden.\n\n" +
+                    "Las canciones del móvil y los vídeos de YouTube no se tocan."
+            )
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Borrar") { _, _ ->
+                Lib.store.borrarLista(nombre)
+                if (origenActual == nombre) origenActual = null
+                Estado.colaOrigen = ""
+                Toast.makeText(this, "Lista borrada", Toast.LENGTH_SHORT).show()
+                mostrar(Nivel.Biblioteca)
+                pintar()
             }
             .show()
     }
