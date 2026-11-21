@@ -14,6 +14,7 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.LibraryResult
@@ -39,9 +40,17 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var reproductor: ExoPlayer
     private lateinit var sesion: MediaLibrarySession
     private val io = Executors.newFixedThreadPool(2)
+
+    // Descargas por delante en su propio hilo: no deben frenar las busquedas.
+    private val descargas = Executors.newFixedThreadPool(2)
+    private val bajando = java.util.Collections.synchronizedSet(HashSet<String>())
+
     private val principal = Handler(Looper.getMainLooper())
 
     private var radioEnMarcha = false
+
+    /** Cuantas pistas por delante se van descargando. */
+    private val POR_DELANTE = 3
 
     // seguimiento de la pista que esta sonando (para marcas y reanudacion)
     private var sonandoId = ""
@@ -60,6 +69,7 @@ class PlaybackService : MediaLibraryService() {
                     else if (sonandoDur <= 0) sonandoDur = item.mediaMetadata.durationMs ?: 0L
                     sonandoPos = reproductor.currentPosition
                     if (sonandoPos > 3000L) Estado.guardarProgreso(sonandoId, sonandoPos)
+                    precargarSiguientes()
                 }
             }
             principal.postDelayed(this, 5000)
@@ -108,6 +118,18 @@ class PlaybackService : MediaLibraryService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
+            // Buffer largo: aguanta tirones de cobertura sin cortar la cancion.
+            .setLoadControl(
+                DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(
+                        60_000,    // minimo por delante: 1 minuto
+                        600_000,   // hasta 10 minutos si hay red
+                        2_500,     // para empezar a sonar
+                        15_000     // para reanudar tras un corte
+                    )
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build()
+            )
             // Sin estos dos incrementos Android Auto no pinta los botones de
             // retroceder/avanzar en la pantalla del coche. Atras y adelante 5 s.
             .setSeekBackIncrementMs(5_000)
@@ -119,8 +141,7 @@ class PlaybackService : MediaLibraryService() {
                 cerrarAnterior()
                 recordar()
                 apuntarLista()
-                precachear(1)
-                precachear(2)
+                precargarSiguientes()
             }
 
             override fun onPlaybackStateChanged(estado: Int) {
@@ -137,7 +158,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onIsPlayingChanged(esta: Boolean) {
-                if (esta) precachear(1) else cerrarAnterior(terminada = false)
+                if (esta) precargarSiguientes() else cerrarAnterior(terminada = false)
             }
         })
 
@@ -162,6 +183,7 @@ class PlaybackService : MediaLibraryService() {
         runCatching { sesion.release() }
         runCatching { reproductor.release() }
         runCatching { io.shutdownNow() }
+        runCatching { descargas.shutdownNow() }
         super.onDestroy()
     }
 
@@ -227,18 +249,33 @@ class PlaybackService : MediaLibraryService() {
         Lib.store.fijarIndice(origen, reproductor.currentMediaItemIndex)
     }
 
-    /** Descarga por delante las siguientes pistas de YouTube (para ir sin cobertura). */
-    private fun precachear(saltos: Int) {
+    /**
+     * Descarga por delante las siguientes pistas de YouTube de la cola, para
+     * que un tramo sin cobertura no corte la musica. Empieza por la siguiente
+     * y va bajando el resto de la lista.
+     */
+    private fun precargarSiguientes() {
         if (!Estado.cacheOffline) return
-        val objetivo = reproductor.currentMediaItemIndex + saltos
-        if (objetivo !in 0 until reproductor.mediaItemCount) return
-        val item = reproductor.getMediaItemAt(objetivo)
-        if (!item.mediaId.startsWith(Ids.YTVID)) return
-        val videoId = item.mediaId.removePrefix(Ids.YTVID)
-        if (videoId.isBlank() || AudioCache.tiene(videoId)) return
-        io.execute {
-            val url = runCatching { Yt.urlAudio(videoId) }.getOrNull() ?: return@execute
-            runCatching { AudioCache.guardar(videoId, url) }
+        val base = reproductor.currentMediaItemIndex
+        if (base < 0) return
+        for (salto in 1..POR_DELANTE) {
+            val objetivo = base + salto
+            if (objetivo !in 0 until reproductor.mediaItemCount) break
+            val item = reproductor.getMediaItemAt(objetivo)
+            if (!item.mediaId.startsWith(Ids.YTVID)) continue
+            val videoId = item.mediaId.removePrefix(Ids.YTVID)
+            if (videoId.isBlank() || AudioCache.tiene(videoId)) continue
+            if (!bajando.add(videoId)) continue
+            descargas.execute {
+                try {
+                    val url = runCatching { Yt.urlAudio(videoId) }.getOrNull()
+                    if (url != null && !AudioCache.tiene(videoId)) {
+                        AudioCache.guardar(videoId, url)
+                    }
+                } finally {
+                    bajando.remove(videoId)
+                }
+            }
         }
     }
 
@@ -355,12 +392,17 @@ class PlaybackService : MediaLibraryService() {
             startIndex: Int,
             startPositionMs: Long
         ): ListenableFuture<MediaItemsWithStartPosition> {
+            // El coche, al tocar una cancion dentro de una lista, manda solo esa
+            // cancion: hay que devolverle la lista entera o se queda repitiendo
+            // lo mismo y nunca cambia de playlist.
+            val (cola, indice) = expandir(mediaItems, startIndex)
             var desde = startPositionMs
-            if (desde == C.TIME_UNSET && startIndex in mediaItems.indices) {
-                desde = Estado.progreso(mediaItems[startIndex].mediaId)
+            if (desde == C.TIME_UNSET && indice in cola.indices) {
+                desde = Estado.progreso(cola[indice].mediaId)
             }
+            Log.i("MiAudio", "cola del coche: ${mediaItems.size} -> ${cola.size} (empieza en $indice)")
             return Futures.immediateFuture(
-                MediaItemsWithStartPosition(mediaItems, startIndex, desde)
+                MediaItemsWithStartPosition(cola, indice, desde)
             )
         }
 
@@ -430,6 +472,39 @@ class PlaybackService : MediaLibraryService() {
     }
 
     // ---------------------------------------------------------------- ayudantes
+
+    /**
+     * Si llega una sola pista, se busca a que lista o carpeta pertenece y se
+     * devuelve esa lista entera empezando por la pista elegida.
+     */
+    private fun expandir(
+        entrada: List<MediaItem>,
+        indice: Int
+    ): Pair<List<MediaItem>, Int> {
+        if (entrada.size != 1) return entrada to indice
+        val id = entrada[0].mediaId
+
+        // Listas guardadas del usuario.
+        Lib.store.listas.forEachIndexed { i, lista ->
+            if (lista.pistas.size > 1) {
+                val k = lista.pistas.indexOfFirst { it.mediaId() == id }
+                if (k >= 0) {
+                    Estado.colaOrigen = Ids.PL + i
+                    return lista.pistas.map { it.toMediaItem() } to k
+                }
+            }
+        }
+
+        // Audios del movil: se usa entera la carpeta de la que sale.
+        if (id.startsWith(Ids.LOCAL)) {
+            for (pistas in Lib.localCarpetas.values) {
+                val k = pistas.indexOfFirst { it.mediaId() == id }
+                if (k >= 0 && pistas.size > 1) return pistas.map { it.toMediaItem() } to k
+            }
+        }
+
+        return entrada to indice
+    }
 
     private fun <T : Any> asincrono(bloque: () -> LibraryResult<T>): ListenableFuture<LibraryResult<T>> {
         val futuro = SettableFuture.create<LibraryResult<T>>()

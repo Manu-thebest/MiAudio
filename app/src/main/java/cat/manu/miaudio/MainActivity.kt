@@ -1423,7 +1423,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     val consulta = "${p.titulo} ${p.artistas.substringBefore(',')}".trim()
                     val candidatos = runCatching {
-                        Yt.hasta(consulta, Yt.VIDEOS, 6).tracks
+                        // Mas candidatos: asi entra el audio oficial y no solo lo primero.
+                        Yt.hasta(consulta, Yt.VIDEOS, 12).tracks
                     }.getOrDefault(emptyList())
                     val elegido = Spotify.elegir(p, candidatos)
                     if (elegido != null) {

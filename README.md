@@ -13,7 +13,8 @@ Reproductor Android con estética oscura tipo Spotify para escuchar **el audio d
 ## Pensado para podcasts en el coche
 
 - **Arranca solo al conectar Android Auto** por el último elemento reproducido, en el minuto exacto donde se quedó (interruptor en Ajustes).
-- **Caché sin cobertura**: mientras suena un episodio se descargan los dos siguientes; sin datos sigue la serie. Si ya está descargado, no gasta datos. Límite configurable (1,5 GB, borra lo más antiguo) y vaciado manual.
+- **Caché sin cobertura**: mientras suena una canción se descargan **las tres siguientes** de la lista, en su propio hilo para no frenar las búsquedas; sin cobertura sigue la serie sin pararse. Si ya está descargado, no gasta datos. Límite configurable (1,5 GB, borra lo más antiguo) y vaciado manual.
+- **Buffer largo**: la app guarda hasta 1 minuto por delante como mínimo y hasta 10 minutos si la red va bien, así un túnel o un tramo sin cobertura no corta la canción en curso.
 - **Marca de escuchados**: check verde y título atenuado en lo ya oído (85 % de la duración o final), también visible en el coche.
 - **Posición por lista**: cada lista guarda el capítulo por el que va y cada episodio recuerda su minuto. Al abrir una lista se puede **seguir donde lo dejé** o empezar desde el principio.
 
@@ -48,7 +49,7 @@ En Ajustes, sección «Apariencia» → **Tema**: **Oscuro** (el de siempre), **
 
 1. Se pega el enlace de la lista (`open.spotify.com/playlist/...`).
 2. La app lee el nombre y las canciones de esa lista **sin cuenta ni permisos de Spotify**: pide la página pública de la lista.
-3. Busca cada canción en YouTube (título + artista) y elige el resultado que más se parece: duración parecida, título contenido y descartando karaokes, covers, directos largos, versiones aceleradas y audios de 1 hora.
+3. Busca cada canción en YouTube (título + artista), mira **12 resultados** y puntúa: **prefiere el audio oficial** (canal «… - Topic» de la discográfica, VEVO, «official audio», «audio oficial», lyric video), el título y la duración exactos y el canal del propio artista; y **hunde los conciertos y directos** («en directo», «live at», «en vivo», «festival», «unplugged», «session», «tour»), además de karaokes, covers, remixes, versiones aceleradas y audios de 1 hora.
 4. Crea la lista con las canciones encontradas y avisa de cuántas no ha podido encontrar.
 
 Detalles a tener en cuenta:
@@ -66,6 +67,7 @@ Abajo del todo de la pantalla completa hay un **botón Aleatorio**, al alcance d
 
 ## Mandos del coche
 
+- **Cambiar de lista desde el coche**: al elegir una canción dentro de una lista, el coche solo manda esa canción; la app la reconoce, carga **la lista entera** y empieza por ahí, así que el cambio de lista sí se aplica (antes seguía con lo que estaba sonando).
 - **Anterior / siguiente** y **retroceder 5 s / avanzar 5 s** en la pantalla de Android Auto y en el reproductor de la app.
 
 ## Compilar

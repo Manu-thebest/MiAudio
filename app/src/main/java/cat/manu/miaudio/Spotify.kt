@@ -74,11 +74,25 @@ object Spotify {
      */
     fun elegir(p: Pista, candidatos: List<Track>): Track? {
         if (candidatos.isEmpty()) return null
+        // Versiones que no son el disco: se hunden.
         val malas = listOf(
             "karaoke", "instrumental", "cover", "tribute", "nightcore", "sped up",
             "speed up", "slowed", "reverb", "8d audio", "mashup", "reaction",
             "tutorial", "como tocar", "aprende a tocar", "1 hour", "10 hours",
-            "loop", "ringtone", "tono de llamada"
+            "loop", "ringtone", "tono de llamada",
+            "remix", "version reggaeton", "chipmunk"
+        )
+        // Directos y conciertos: para una lista importada se prefiere el disco.
+        val directos = listOf(
+            "live at", "en directo", "directo", "en vivo", "ao vivo", "concert",
+            "concierto", "festival", "unplugged", "mtv", "tiny desk", "session",
+            "sessions", "rehearsal", "soundcheck", "bootleg", "jam session",
+            "acustico", "acústico", "acoustic live", "gira ", "tour "
+        )
+        // Senales de audio oficial.
+        val oficiales = listOf(
+            "official audio", "audio oficial", "official video", "video oficial",
+            "official music video", "audio only", "solo audio", "lyric video", "letra"
         )
         val titulo = normal(p.titulo)
         val palabras = titulo.split(' ').filter { it.length > 2 }
@@ -97,9 +111,21 @@ object Spotify {
 
             malas.forEach { if (ct.contains(it)) puntos -= 30 }
 
+            // Directos y conciertos delante de la version de estudio.
+            directos.forEach { if (ct.contains(it)) puntos -= 45 }
+
+            // Titulo o canal con audio oficial: es el que suena en las listas.
+            oficiales.forEach { if (ct.contains(it)) puntos += 25 }
+            val canal = normal(c.subtitle)
+            if (canal.contains("topic")) puntos += 60          // canal de discografica
+            if (canal.contains("vevo")) puntos += 45
+            if (canal.contains("records") || canal.contains("music")) puntos += 10
+            if (canal.contains("live") || canal.contains("concert")) puntos -= 25
+
             // El artista ayuda a distinguir la buena.
             val primerArtista = normal(p.artistas.substringBefore(','))
             if (primerArtista.length > 2 && ct.contains(primerArtista)) puntos += 15
+            if (primerArtista.length > 2 && canal.contains(primerArtista)) puntos += 20
 
             if (p.durMs > 0 && c.durMs > 0) {
                 val dif = kotlin.math.abs(c.durMs - p.durMs).toDouble() / p.durMs
